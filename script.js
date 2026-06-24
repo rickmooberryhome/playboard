@@ -41,22 +41,18 @@ if (intakeForm && formResult) {
     }
 
     const data = new FormData(intakeForm);
-    const parentName = data.get("parentName") || "";
-    const parentEmail = data.get("parentEmail") || "";
-    const athleteName = data.get("athleteName") || "Not added yet";
+    const athleteFirstName = data.get("athleteFirstName") || "";
+    const athleteLastName = data.get("athleteLastName") || "";
     const athleteGrade = data.get("athleteGrade") || "Not selected yet";
-    const biggestQuestion = data.get("biggestQuestion") || "Not added yet";
+    const emailAddress = data.get("emailAddress") || "";
 
     const summary = [
       "PlayBoard Information Request",
       "",
-      `Parent Name: ${parentName}`,
-      `Parent Email: ${parentEmail}`,
-      `Athlete Name: ${athleteName}`,
+      `Athlete First Name: ${athleteFirstName}`,
+      `Athlete Last Name: ${athleteLastName}`,
       `Athlete Grade: ${athleteGrade}`,
-      "",
-      "Biggest Recruiting Question:",
-      biggestQuestion
+      `Email Address: ${emailAddress}`
     ].join("\n");
 
     formResult.hidden = false;
