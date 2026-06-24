@@ -48,7 +48,7 @@ if (intakeForm && formResult) {
     const biggestQuestion = data.get("biggestQuestion") || "Not added yet";
 
     const summary = [
-      "PlayBoard Readiness Check Lead",
+      "PlayBoard Information Request",
       "",
       `Parent Name: ${parentName}`,
       `Parent Email: ${parentEmail}`,
@@ -61,9 +61,9 @@ if (intakeForm && formResult) {
 
     formResult.hidden = false;
     formResult.textContent = [
-      "Thanks — this starter form is ready to connect to Google Sheets.",
+      "Thanks — we have your information request.",
       "",
-      "For now, here is the intake summary:",
+      "For now, this starter form is ready to connect to Google Sheets.",
       "",
       summary
     ].join("\n");
