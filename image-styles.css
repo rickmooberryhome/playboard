@@ -17,14 +17,16 @@
   overflow: hidden;
   background-image: var(--image);
   background-size: cover;
-  background-position: center;
+  background-position: var(--image-position, center);
 }
 
 .image-panel,
 .image-callout {
-  border: 1px solid var(--pb-line);
+  border: 1px solid rgba(113, 246, 251, 0.28);
   border-radius: var(--pb-radius);
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(238, 27, 156, 0.08),
+    0 28px 90px rgba(0, 0, 0, 0.38);
 }
 
 .image-panel {
@@ -40,9 +42,9 @@
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(5, 5, 5, 0.1), rgba(5, 5, 5, 0.84)),
-    radial-gradient(circle at 18% 18%, rgba(113, 246, 251, 0.16), transparent 24rem),
-    radial-gradient(circle at 92% 82%, rgba(238, 27, 156, 0.24), transparent 22rem);
+    linear-gradient(180deg, rgba(5, 5, 5, 0.02), rgba(5, 5, 5, 0.46)),
+    radial-gradient(circle at 18% 18%, rgba(113, 246, 251, 0.18), transparent 24rem),
+    radial-gradient(circle at 92% 82%, rgba(238, 27, 156, 0.20), transparent 22rem);
 }
 
 .image-panel::after,
@@ -51,7 +53,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 58%);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.20), transparent 58%);
 }
 
 .coded-overlay {
@@ -61,11 +63,13 @@
   right: 1.2rem;
   bottom: 1.2rem;
   padding: 1.1rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(113, 246, 251, 0.26);
   border-radius: 22px;
-  background: rgba(6, 8, 10, 0.68);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+  background: rgba(6, 8, 10, 0.46);
+  backdrop-filter: blur(12px) saturate(132%);
+  box-shadow:
+    0 0 0 1px rgba(247, 233, 19, 0.06),
+    0 22px 70px rgba(0, 0, 0, 0.28);
 }
 
 .hero-media .coded-overlay {
@@ -84,7 +88,7 @@
   align-items: baseline;
   gap: 1rem;
   padding: 0.78rem 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .stat-row strong {
@@ -92,6 +96,7 @@
   font-size: 2rem;
   line-height: 1;
   letter-spacing: -0.04em;
+  text-shadow: 0 0 22px rgba(247, 233, 19, 0.18);
 }
 
 .stat-row span {
@@ -108,9 +113,21 @@
 
 .image-tile {
   min-height: 230px;
-  border: 1px solid var(--pb-line);
+  border: 1px solid rgba(113, 246, 251, 0.22);
   border-radius: var(--pb-radius);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.26);
+}
+
+.image-tile:nth-child(1) {
+  border-color: rgba(113, 246, 251, 0.38);
+}
+
+.image-tile:nth-child(2) {
+  border-color: rgba(247, 233, 19, 0.34);
+}
+
+.image-tile:nth-child(3) {
+  border-color: rgba(238, 27, 156, 0.36);
 }
 
 .image-tile span {
@@ -120,30 +137,50 @@
   bottom: 1rem;
   padding: 0.55rem 0.75rem;
   border-radius: 999px;
-  background: rgba(5, 5, 5, 0.68);
+  background: rgba(5, 5, 5, 0.46);
   color: var(--pb-white);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   font-size: 0.74rem;
   font-weight: 950;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(10px) saturate(130%);
 }
 
 .image-feature-grid .feature-card {
   overflow: hidden;
 }
 
+.image-feature-grid .feature-card:nth-child(1) {
+  border-color: rgba(113, 246, 251, 0.28);
+}
+
+.image-feature-grid .feature-card:nth-child(2) {
+  border-color: rgba(247, 233, 19, 0.40);
+}
+
+.image-feature-grid .feature-card:nth-child(3) {
+  border-color: rgba(238, 27, 156, 0.32);
+}
+
 .mini-media {
   height: 178px;
   margin: -0.35rem -0.35rem 1.15rem;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(113, 246, 251, 0.26);
+}
+
+.image-feature-grid .feature-card:nth-child(2) .mini-media {
+  border-color: rgba(247, 233, 19, 0.38);
+}
+
+.image-feature-grid .feature-card:nth-child(3) .mini-media {
+  border-color: rgba(238, 27, 156, 0.34);
 }
 
 .mini-media::before {
   background:
-    linear-gradient(180deg, transparent 15%, rgba(5, 5, 5, 0.74)),
+    linear-gradient(180deg, transparent 18%, rgba(5, 5, 5, 0.42)),
     radial-gradient(circle at 85% 20%, rgba(247, 233, 19, 0.16), transparent 16rem);
 }
 
@@ -172,17 +209,101 @@
   max-width: 500px;
 }
 
-.img-friday-night-lights { --image: url("./images/recruit-friday-night-lights.png"); }
-.img-hudl-film-review { --image: url("./images/recruit-hudl-film-review.png"); }
-.img-showcase-quarterback { --image: url("./images/recruit-showcase-quarterback.png"); }
-.img-campus-visit-student { --image: url("./images/recruit-campus-visit-student.png"); }
-.img-film-study-tablet { --image: url("./images/recruit-film-study-tablet.png"); }
-.img-campus-visit-walkway { --image: url("./images/recruit-campus-visit-walkway.png"); }
-.img-indoor-speed-training { --image: url("./images/recruit-indoor-speed-training.png"); }
-.img-offseason-lineman-lift { --image: url("./images/recruit-offseason-lineman-lift.png"); }
-.img-after-practice-stadium { --image: url("./images/recruit-after-practice-stadium.png"); }
-.img-field-dusk-arrival { --image: url("./images/recruit-field-dusk-arrival.png"); }
-.img-showcase-defensive-back { --image: url("./images/recruit-showcase-defensive-back.png"); }
+.img-friday-night-lights {
+  --image: url("./images/recruit-friday-night-lights.png");
+  --image-position: center 42%;
+  border-color: rgba(113, 246, 251, 0.38);
+}
+
+.img-hudl-film-review {
+  --image: url("./images/recruit-hudl-film-review.png");
+  --image-position: center 38%;
+  border-color: rgba(113, 246, 251, 0.34);
+}
+
+.img-showcase-quarterback {
+  --image: url("./images/recruit-showcase-quarterback.png");
+  --image-position: center 36%;
+  border-color: rgba(247, 233, 19, 0.34);
+}
+
+.img-campus-visit-student {
+  --image: url("./images/recruit-campus-visit-student.png");
+  --image-position: center 40%;
+  border-color: rgba(238, 27, 156, 0.32);
+}
+
+.img-film-study-tablet {
+  --image: url("./images/recruit-film-study-tablet.png");
+  --image-position: center 36%;
+  border-color: rgba(113, 246, 251, 0.34);
+}
+
+.img-campus-visit-walkway {
+  --image: url("./images/recruit-campus-visit-walkway.png");
+  --image-position: center 34%;
+  border-color: rgba(247, 233, 19, 0.35);
+}
+
+.img-indoor-speed-training {
+  --image: url("./images/recruit-indoor-speed-training.png");
+  --image-position: center 42%;
+  border-color: rgba(238, 27, 156, 0.32);
+}
+
+.img-offseason-lineman-lift {
+  --image: url("./images/recruit-offseason-lineman-lift.png");
+  --image-position: center 32%;
+  border-color: rgba(238, 27, 156, 0.36);
+}
+
+.img-after-practice-stadium {
+  --image: url("./images/recruit-after-practice-stadium.png");
+  --image-position: center 38%;
+  border-color: rgba(113, 246, 251, 0.34);
+}
+
+.img-field-dusk-arrival {
+  --image: url("./images/recruit-field-dusk-arrival.png");
+  --image-position: center 45%;
+  border-color: rgba(247, 233, 19, 0.38);
+}
+
+.img-showcase-defensive-back {
+  --image: url("./images/recruit-showcase-defensive-back.png");
+  --image-position: center 38%;
+  border-color: rgba(238, 27, 156, 0.34);
+}
+
+.img-camp-quarterback {
+  --image: url("./images/recruit-camp-quarterback.png");
+  --image-position: center 35%;
+  border-color: rgba(247, 233, 19, 0.36);
+}
+
+.img-camp-defensive-stance {
+  --image: url("./images/recruit-camp-defensive-stance.png");
+  --image-position: center 36%;
+  border-color: rgba(238, 27, 156, 0.34);
+}
+
+.img-friday-night-uniform {
+  --image: url("./images/recruit-friday-night-uniform.png");
+  --image-position: center 38%;
+  border-color: rgba(247, 233, 19, 0.36);
+}
+
+.img-offseason-weight-room {
+  --image: url("./images/recruit-offseason-weight-room.png");
+  --image-position: center 34%;
+  border-color: rgba(113, 246, 251, 0.34);
+}
+
+.img-athlete-speed-work {
+  --image: url("./images/recruit-athlete-speed-work.png");
+  --image-position: center 43%;
+  border-color: rgba(238, 27, 156, 0.34);
+}
 
 @media (max-width: 980px) {
   .hero-with-media {
