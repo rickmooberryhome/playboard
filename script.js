@@ -15,8 +15,22 @@ if (navToggle && nav) {
   });
 }
 
+const intakeSection = document.querySelector("#intake");
 const intakeForm = document.querySelector("[data-intake-form]");
+const firstIntakeField = intakeForm?.querySelector("input, select, textarea");
 const formResult = document.querySelector("[data-form-result]");
+
+document.querySelectorAll("[data-scroll-to-intake]").forEach((cta) => {
+  cta.addEventListener("click", (event) => {
+    event.preventDefault();
+
+    intakeSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    window.setTimeout(() => {
+      firstIntakeField?.focus({ preventScroll: true });
+    }, 500);
+  });
+});
 
 if (intakeForm && formResult) {
   intakeForm.addEventListener("submit", async (event) => {
@@ -27,26 +41,37 @@ if (intakeForm && formResult) {
     }
 
     const data = new FormData(intakeForm);
+    const parentName = data.get("parentName") || "";
+    const parentEmail = data.get("parentEmail") || "";
+    const athleteName = data.get("athleteName") || "Not added yet";
+    const athleteGrade = data.get("athleteGrade") || "Not selected yet";
+    const biggestQuestion = data.get("biggestQuestion") || "Not added yet";
+
     const summary = [
-      "PlayBoard Intake Summary",
+      "PlayBoard Readiness Check Lead",
       "",
-      `Athlete: ${data.get("athleteName") || ""}`,
-      `Parent Email: ${data.get("parentEmail") || ""}`,
-      `Graduation Year: ${data.get("gradYear") || ""}`,
-      `Primary Position: ${data.get("position") || ""}`,
-      `Film Link: ${data.get("filmLink") || "Not added yet"}`,
+      `Parent Name: ${parentName}`,
+      `Parent Email: ${parentEmail}`,
+      `Athlete Name: ${athleteName}`,
+      `Athlete Grade: ${athleteGrade}`,
       "",
-      "First need:",
-      data.get("needs") || "Not sure yet."
+      "Biggest Recruiting Question:",
+      biggestQuestion
     ].join("\n");
 
     formResult.hidden = false;
-    formResult.textContent = `${summary}\n\nCopied to clipboard. Next: connect this form to your CRM, email tool, or backend.`;
+    formResult.textContent = [
+      "Thanks — this starter form is ready to connect to Google Sheets.",
+      "",
+      "For now, here is the intake summary:",
+      "",
+      summary
+    ].join("\n");
 
     try {
       await navigator.clipboard.writeText(summary);
     } catch (error) {
-      formResult.textContent = `${summary}\n\nCopy this summary and send it to your PlayBoard intake process.`;
+      // Clipboard access can fail in some browsers. The visible summary is still shown on the page.
     }
   });
 }
