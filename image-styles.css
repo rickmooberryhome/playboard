@@ -74,26 +74,40 @@
 
 .hero-media .coded-overlay {
   left: auto;
-  max-width: 370px;
+  max-width: 345px;
+}
+
+.board-preview {
+  padding: 0.95rem;
+  background: rgba(6, 8, 10, 0.42);
 }
 
 .board-preview .panel-label,
 .coded-overlay .panel-label {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.stat-intro {
+  margin: 0 0 0.5rem;
+  color: var(--pb-soft);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  font-weight: 750;
 }
 
 .stat-row {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
-  padding: 0.78rem 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 0.58rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .stat-row strong {
+  flex: 0 0 4.2rem;
   color: var(--pb-yellow);
-  font-size: 2rem;
+  font-size: 1.58rem;
   line-height: 1;
   letter-spacing: -0.04em;
   text-shadow: 0 0 22px rgba(247, 233, 19, 0.18);
@@ -101,6 +115,8 @@
 
 .stat-row span {
   color: var(--pb-soft);
+  font-size: 0.88rem;
+  line-height: 1.25;
   font-weight: 800;
 }
 
@@ -359,7 +375,13 @@
   }
 
   .stat-row strong {
-    font-size: 1.55rem;
+    flex-basis: 3.55rem;
+    font-size: 1.28rem;
+  }
+
+  .stat-row span,
+  .stat-intro {
+    font-size: 0.8rem;
   }
 
   .image-tile {
