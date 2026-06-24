@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./image-styles.css" />
   <link rel="stylesheet" href="./sticky-cta.css" />
+  <link rel="stylesheet" href="./form-styles.css" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -282,8 +283,7 @@
         <p class="eyebrow">Start here</p>
         <h2>Request more information about PlayBoard.</h2>
         <p>
-          Share the basics. We will send more information about the PlayBoard program, the 360 Athlete Review,
-          ongoing recruiting guidance, and next steps.
+          Share the basics below. We will send program details and the next step by email.
         </p>
       </div>
 
@@ -299,31 +299,37 @@
             <input name="parentEmail" type="email" placeholder="you@example.com" autocomplete="email" required />
           </label>
 
-          <label>
-            Athlete name
-            <input name="athleteName" type="text" placeholder="First and last name" autocomplete="name" />
-          </label>
-
-          <label>
-            Athlete grade
-            <select name="athleteGrade">
-              <option value="">Select grade</option>
-              <option>Freshman</option>
-              <option>Sophomore</option>
-              <option>Junior</option>
-              <option>Senior</option>
-            </select>
-          </label>
+          <fieldset class="grade-field full">
+            <legend>Athlete grade</legend>
+            <div class="grade-options">
+              <label class="grade-option">
+                <input type="radio" name="athleteGrade" value="Sophomore" required />
+                <span>Sophomore</span>
+              </label>
+              <label class="grade-option">
+                <input type="radio" name="athleteGrade" value="Junior" />
+                <span>Junior</span>
+              </label>
+              <label class="grade-option">
+                <input type="radio" name="athleteGrade" value="Senior" />
+                <span>Senior</span>
+              </label>
+              <label class="grade-option">
+                <input type="radio" name="athleteGrade" value="Other" />
+                <span>Other</span>
+              </label>
+            </div>
+          </fieldset>
 
           <label class="full">
-            Biggest recruiting question right now
-            <textarea name="biggestQuestion" placeholder="What are you trying to figure out about your athlete's recruiting process?"></textarea>
+            Biggest recruiting question right now <span class="optional-note">Optional</span>
+            <textarea name="biggestQuestion" placeholder="Example: We are not sure what level to target, what to send coaches, or how to follow up."></textarea>
           </label>
         </div>
 
         <div class="form-actions">
           <button class="button button-primary" type="submit">Send Me More Information</button>
-          <p>We’ll follow up by email with program details and the next step.</p>
+          <p>We’ll email program details and the next step.</p>
         </div>
 
         <p class="form-note">
