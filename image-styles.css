@@ -1,0 +1,247 @@
+.hero-with-media {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(360px, 0.72fr);
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  align-items: center;
+}
+
+.hero-media {
+  min-height: clamp(430px, 46vw, 620px);
+}
+
+.image-panel,
+.image-callout,
+.image-tile,
+.mini-media {
+  position: relative;
+  overflow: hidden;
+  background-image: var(--image);
+  background-size: cover;
+  background-position: center;
+}
+
+.image-panel,
+.image-callout {
+  border: 1px solid var(--pb-line);
+  border-radius: var(--pb-radius);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+}
+
+.image-panel {
+  min-height: 430px;
+}
+
+.image-panel::before,
+.image-callout::before,
+.image-tile::before,
+.mini-media::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(5, 5, 5, 0.1), rgba(5, 5, 5, 0.84)),
+    radial-gradient(circle at 18% 18%, rgba(113, 246, 251, 0.16), transparent 24rem),
+    radial-gradient(circle at 92% 82%, rgba(238, 27, 156, 0.24), transparent 22rem);
+}
+
+.image-panel::after,
+.image-callout::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 58%);
+}
+
+.coded-overlay {
+  position: absolute;
+  z-index: 2;
+  left: 1.2rem;
+  right: 1.2rem;
+  bottom: 1.2rem;
+  padding: 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 22px;
+  background: rgba(6, 8, 10, 0.68);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+}
+
+.hero-media .coded-overlay {
+  left: auto;
+  max-width: 370px;
+}
+
+.board-preview .panel-label,
+.coded-overlay .panel-label {
+  margin-bottom: 0.75rem;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.78rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.stat-row strong {
+  color: var(--pb-yellow);
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.stat-row span {
+  color: var(--pb-soft);
+  font-weight: 800;
+}
+
+.image-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.image-tile {
+  min-height: 230px;
+  border: 1px solid var(--pb-line);
+  border-radius: var(--pb-radius);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.image-tile span {
+  position: absolute;
+  z-index: 2;
+  left: 1rem;
+  bottom: 1rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(5, 5, 5, 0.68);
+  color: var(--pb-white);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 0.74rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  backdrop-filter: blur(12px);
+}
+
+.image-feature-grid .feature-card {
+  overflow: hidden;
+}
+
+.mini-media {
+  height: 178px;
+  margin: -0.35rem -0.35rem 1.15rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.mini-media::before {
+  background:
+    linear-gradient(180deg, transparent 15%, rgba(5, 5, 5, 0.74)),
+    radial-gradient(circle at 85% 20%, rgba(247, 233, 19, 0.16), transparent 16rem);
+}
+
+.image-callout {
+  display: grid;
+  align-items: end;
+  min-height: 360px;
+  margin-top: 2rem;
+  text-align: left;
+}
+
+.image-callout > div {
+  position: relative;
+  z-index: 2;
+  max-width: 620px;
+  padding: 1.6rem;
+}
+
+.image-callout h3 {
+  max-width: 620px;
+  font-size: clamp(2rem, 4.5vw, 4.4rem);
+  text-transform: uppercase;
+}
+
+.guarantee-overlay {
+  max-width: 500px;
+}
+
+.img-friday-night-lights { --image: url("./images/recruit-friday-night-lights.png"); }
+.img-hudl-film-review { --image: url("./images/recruit-hudl-film-review.png"); }
+.img-showcase-quarterback { --image: url("./images/recruit-showcase-quarterback.png"); }
+.img-campus-visit-student { --image: url("./images/recruit-campus-visit-student.png"); }
+.img-film-study-tablet { --image: url("./images/recruit-film-study-tablet.png"); }
+.img-campus-visit-walkway { --image: url("./images/recruit-campus-visit-walkway.png"); }
+.img-indoor-speed-training { --image: url("./images/recruit-indoor-speed-training.png"); }
+.img-offseason-lineman-lift { --image: url("./images/recruit-offseason-lineman-lift.png"); }
+.img-after-practice-stadium { --image: url("./images/recruit-after-practice-stadium.png"); }
+.img-field-dusk-arrival { --image: url("./images/recruit-field-dusk-arrival.png"); }
+.img-showcase-defensive-back { --image: url("./images/recruit-showcase-defensive-back.png"); }
+
+@media (max-width: 980px) {
+  .hero-with-media {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-media,
+  .image-panel {
+    min-height: 440px;
+  }
+
+  .hero-media .coded-overlay {
+    left: 1.2rem;
+    max-width: none;
+  }
+
+  .image-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .image-tile {
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 760px) {
+  .hero-media,
+  .image-panel,
+  .image-callout {
+    min-height: 360px;
+  }
+
+  .coded-overlay {
+    left: 0.85rem;
+    right: 0.85rem;
+    bottom: 0.85rem;
+    padding: 0.9rem;
+  }
+
+  .panel-row {
+    grid-template-columns: 4.25rem 1fr;
+  }
+
+  .mini-media {
+    height: 210px;
+  }
+}
+
+@media (max-width: 460px) {
+  .image-panel,
+  .image-callout {
+    min-height: 330px;
+  }
+
+  .stat-row strong {
+    font-size: 1.55rem;
+  }
+
+  .image-tile {
+    min-height: 240px;
+  }
+}
