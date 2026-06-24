@@ -6,6 +6,33 @@
   <title>PlayBoard | Stop Guessing. Build Your Recruiting Plan.</title>
   <meta name="description" content="PlayBoard helps high school football athletes build a recruiting plan, understand where they stand, and stay accountable every week." />
   <link rel="stylesheet" href="./styles.css" />
+  <style>
+    .hero {
+      display: block;
+      min-height: auto;
+      padding-top: clamp(4rem, 9vw, 7rem);
+      padding-bottom: clamp(4.5rem, 10vw, 8rem);
+    }
+
+    .hero-copy {
+      max-width: 1040px;
+    }
+
+    .hero h1 {
+      max-width: 1040px;
+      font-size: clamp(4.4rem, 10.5vw, 9.5rem);
+    }
+
+    .hero-lede {
+      max-width: 760px;
+    }
+
+    @media (max-width: 760px) {
+      .hero h1 {
+        font-size: clamp(3.3rem, 17vw, 5.7rem);
+      }
+    }
+  </style>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -53,71 +80,6 @@
           <div><strong>Know the level</strong><span>Stop chasing schools with no fit.</span></div>
           <div><strong>Build the board</strong><span>Track targets and next steps.</span></div>
           <div><strong>Work the plan</strong><span>Stay accountable every week.</span></div>
-        </div>
-      </div>
-
-      <div class="hero-visual" aria-label="Recruiting board preview">
-        <div class="image-placeholder">
-          <div class="field-lines" aria-hidden="true"></div>
-          <div class="photo-label">Recruiting plan preview</div>
-        </div>
-
-        <div class="dashboard-card">
-          <div class="panel-topline">
-            <span>Recruiting Board</span>
-            <span class="status-dot">Action Needed</span>
-          </div>
-
-          <div class="metric-grid">
-            <article class="metric-card">
-              <span class="metric-number">28</span>
-              <span class="metric-label">Target Schools</span>
-            </article>
-            <article class="metric-card">
-              <span class="metric-number">14</span>
-              <span class="metric-label">Coaches Contacted</span>
-            </article>
-            <article class="metric-card warning">
-              <span class="metric-number">6</span>
-              <span class="metric-label">Follow-Ups Due</span>
-            </article>
-            <article class="metric-card accent">
-              <span class="metric-number">3</span>
-              <span class="metric-label">Coach Replies</span>
-            </article>
-          </div>
-
-          <div class="board-header">
-            <span>Top actions this week</span>
-            <span>Status</span>
-          </div>
-
-          <div class="school-list">
-            <div class="school-row">
-              <span class="school-fit">01</span>
-              <div>
-                <strong>Clean up highlight film</strong>
-                <small>Remove filler clips · feature role fit</small>
-              </div>
-              <span class="tag yellow">Due</span>
-            </div>
-            <div class="school-row">
-              <span class="school-fit">02</span>
-              <div>
-                <strong>Review college level fit</strong>
-                <small>Match film, size, grades, and position</small>
-              </div>
-              <span class="tag blue">Ready</span>
-            </div>
-            <div class="school-row">
-              <span class="school-fit">03</span>
-              <div>
-                <strong>Send coach follow-ups</strong>
-                <small>Track every response and next step</small>
-              </div>
-              <span class="tag green">Next</span>
-            </div>
-          </div>
         </div>
       </div>
     </section>
