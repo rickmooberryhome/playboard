@@ -290,39 +290,21 @@
       <form class="intake-form" action="#" method="post" data-intake-form>
         <div class="form-grid">
           <label>
-            Parent name
-            <input name="parentName" type="text" placeholder="First and last name" autocomplete="name" required />
+            Athlete's First Name
+            <input name="firstName" type="text" placeholder="John" autocomplete="name" required />
+          </label>
+          <label>
+            Athlete's Last Name
+            <input name="lastName" type="text" placeholder="Doe" autocomplete="name" required />
           </label>
 
           <label>
-            Parent email
-            <input name="parentEmail" type="email" placeholder="you@example.com" autocomplete="email" required />
+            Email
+            <input name="Email" type="email" placeholder="you@example.com" autocomplete="email" required />
           </label>
 
-          <fieldset class="grade-field full">
-            <legend>Athlete grade</legend>
-            <div class="grade-options">
-              <label class="grade-option">
-                <input type="radio" name="athleteGrade" value="Sophomore" required />
-                <span>Sophomore</span>
-              </label>
-              <label class="grade-option">
-                <input type="radio" name="athleteGrade" value="Junior" />
-                <span>Junior</span>
-              </label>
-              <label class="grade-option">
-                <input type="radio" name="athleteGrade" value="Senior" />
-                <span>Senior</span>
-              </label>
-              <label class="grade-option">
-                <input type="radio" name="athleteGrade" value="Other" />
-                <span>Other</span>
-              </label>
-            </div>
-          </fieldset>
-
           <label class="full">
-            Biggest recruiting question right now <span class="optional-note">Optional</span>
+            Optional - Biggest recruiting question right now
             <textarea name="biggestQuestion" placeholder="Example: We are not sure what level to target, what to send coaches, or how to follow up."></textarea>
           </label>
         </div>
