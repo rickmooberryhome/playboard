@@ -390,7 +390,7 @@ p {
   display: grid;
   grid-template-columns: 3rem 1fr;
   gap: 0.9rem;
-  padding: 0.9rem 0;
+  padding: 0.1rem 0;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--pb-soft);
 }
