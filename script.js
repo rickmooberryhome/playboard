@@ -40,34 +40,53 @@ if (intakeForm && formResult) {
       return;
     }
 
+    const submitButton = intakeForm.querySelector('button[type="submit"]');
     const data = new FormData(intakeForm);
-    const athleteFirstName = data.get("athleteFirstName") || "";
-    const athleteLastName = data.get("athleteLastName") || "";
-    const athleteGrade = data.get("athleteGrade") || "Not selected yet";
-    const emailAddress = data.get("emailAddress") || "";
 
-    const summary = [
-      "PlayBoard Information Request",
-      "",
-      `Athlete First Name: ${athleteFirstName}`,
-      `Athlete Last Name: ${athleteLastName}`,
-      `Athlete Grade: ${athleteGrade}`,
-      `Email Address: ${emailAddress}`
-    ].join("\n");
+    const payload = {
+      firstName: String(data.get("firstName") || "").trim(),
+      lastName: String(data.get("lastName") || "").trim(),
+      email: String(data.get("email") || data.get("Email") || "").trim(),
+      biggestQuestion: String(data.get("biggestQuestion") || "").trim()
+    };
 
     formResult.hidden = false;
-    formResult.textContent = [
-      "Thanks — we have your information request.",
-      "",
-      "For now, this starter form is ready to connect to Google Sheets.",
-      "",
-      summary
-    ].join("\n");
+    formResult.textContent = "Sending your request...";
+
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "Sending...";
+    }
 
     try {
-      await navigator.clipboard.writeText(summary);
+      const response = await fetch("/api/leads", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Something went wrong.");
+      }
+
+      formResult.textContent =
+        result.message ||
+        "Thanks — we have your information request. Check your email for the next step.";
+
+      intakeForm.reset();
     } catch (error) {
-      // Clipboard access can fail in some browsers. The visible summary is still shown on the page.
+      formResult.textContent =
+        error.message ||
+        "Something went wrong saving your request. Please try again.";
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "Send Me More Information";
+      }
     }
   });
 }
