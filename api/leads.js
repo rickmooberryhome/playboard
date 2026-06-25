@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const supabase = supabaseUrl && supabaseSecretKey
   ? createClient(supabaseUrl, supabaseSecretKey)
@@ -19,6 +19,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
+      code: "METHOD_NOT_ALLOWED",
       message: "Method not allowed"
     });
   }
@@ -28,7 +29,8 @@ export default async function handler(req, res) {
 
     return res.status(500).json({
       success: false,
-      message: "The lead system is not configured yet."
+      code: "SUPABASE_CONFIG_MISSING",
+      message: "The lead system is not configured yet. Check SUPABASE_URL and SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in Vercel."
     });
   }
 
@@ -41,6 +43,7 @@ export default async function handler(req, res) {
     if (!athleteFirstName || !athleteLastName || !parentEmail) {
       return res.status(400).json({
         success: false,
+        code: "MISSING_REQUIRED_FIELDS",
         message: "Please enter the athlete's first name, last name, and email."
       });
     }
@@ -48,6 +51,7 @@ export default async function handler(req, res) {
     if (!isValidEmail(parentEmail)) {
       return res.status(400).json({
         success: false,
+        code: "INVALID_EMAIL",
         message: "Please enter a valid email address."
       });
     }
@@ -72,7 +76,9 @@ export default async function handler(req, res) {
 
       return res.status(500).json({
         success: false,
-        message: "Something went wrong saving your request. Please try again."
+        code: "SUPABASE_INSERT_FAILED",
+        supabaseCode: error.code || null,
+        message: "Something went wrong saving your request. Please check the Supabase leads table columns."
       });
     }
 
@@ -86,6 +92,7 @@ export default async function handler(req, res) {
 
     return res.status(500).json({
       success: false,
+      code: "LEAD_API_ERROR",
       message: "Something went wrong. Please try again."
     });
   }
