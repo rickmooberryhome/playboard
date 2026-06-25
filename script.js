@@ -75,7 +75,7 @@ if (intakeForm && formResult) {
 
       formResult.textContent =
         result.message ||
-        "Thanks — we have your information request. Check your email for the next step.";
+        "Got it. We have your information. We will be in touch shortly with more about PlayBoard and the next step.";
 
       intakeForm.reset();
     } catch (error) {
