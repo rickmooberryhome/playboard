@@ -1,8 +1,22 @@
 const { createClient } = require("@supabase/supabase-js");
 
-const supabaseUrl = process.env.SUPABASE_URL;
+const rawSupabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+function normalizeSupabaseUrl(value) {
+  if (!value) {
+    return "";
+  }
+
+  try {
+    const parsedUrl = new URL(value.trim());
+    return parsedUrl.origin;
+  } catch (error) {
+    return "";
+  }
+}
+
+const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
 const supabase = supabaseUrl && supabaseSecretKey
   ? createClient(supabaseUrl, supabaseSecretKey)
   : null;
@@ -24,13 +38,23 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  if (!supabase) {
+  if (!rawSupabaseUrl || !supabaseSecretKey) {
     console.error("Missing Supabase environment variables.");
 
     return res.status(500).json({
       success: false,
       code: "SUPABASE_CONFIG_MISSING",
       message: "The lead system is not configured yet. Check SUPABASE_URL and SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in Vercel."
+    });
+  }
+
+  if (!supabaseUrl || !supabase) {
+    console.error("Invalid Supabase URL.");
+
+    return res.status(500).json({
+      success: false,
+      code: "SUPABASE_URL_INVALID",
+      message: "The Supabase project URL is invalid. Use the project URL format: https://YOUR-PROJECT-REF.supabase.co"
     });
   }
 
@@ -78,7 +102,9 @@ module.exports = async function handler(req, res) {
         success: false,
         code: "SUPABASE_INSERT_FAILED",
         supabaseCode: error.code || null,
-        message: "Something went wrong saving your request. Please check the Supabase leads table columns."
+        message: error.code === "PGRST125"
+          ? "The Supabase URL appears to include an invalid path. In Vercel, SUPABASE_URL should be the project URL only: https://YOUR-PROJECT-REF.supabase.co"
+          : "Something went wrong saving your request. Please check the Supabase leads table columns."
       });
     }
 
