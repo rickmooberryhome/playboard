@@ -111,7 +111,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success: true,
       leadId: data.id,
-      message: "Thanks — we have your information request. Check your email for the next step."
+      message: "Got it. We have your information. We will be in touch shortly with more about PlayBoard and the next step."
     });
   } catch (error) {
     console.error("Lead API error:", error);
