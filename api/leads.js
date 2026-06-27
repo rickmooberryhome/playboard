@@ -1,27 +1,8 @@
 const { createClient } = require("@supabase/supabase-js");
-const { Resend } = require("resend");
 
 const rawSupabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-const resendApiKey = process.env.RESEND_API_KEY;
-const playboardFromEmail = process.env.PLAYBOARD_FROM_EMAIL;
-const playboardReplyToEmail = process.env.PLAYBOARD_REPLY_TO_EMAIL;
 const configuredSiteUrl = process.env.PLAYBOARD_SITE_URL;
-const openAiApiKey = process.env.OPENAI_API_KEY;
-const openAiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
-
-const allowedQuestionThemes = new Set([
-  "level_fit",
-  "film",
-  "coach_outreach",
-  "camps",
-  "timeline",
-  "social_media",
-  "academics",
-  "confidence",
-  "general",
-  "unclear"
-]);
 
 function normalizeSupabaseUrl(value) {
   if (!value) {
@@ -40,7 +21,6 @@ const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
 const supabase = supabaseUrl && supabaseSecretKey
   ? createClient(supabaseUrl, supabaseSecretKey)
   : null;
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 function cleanText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -48,15 +28,6 @@ function cleanText(value) {
 
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function escapeHtml(value) {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
 function getBaseUrl(req) {
@@ -76,540 +47,35 @@ function buildReadinessCheckUrl(req, leadId) {
   return `${getBaseUrl(req)}/readiness-check.html?lead=${encodeURIComponent(leadId)}`;
 }
 
-function limitEmailText(value, maxLength = 600) {
-  const cleanValue = cleanText(value).replace(/\s+/g, " ");
-
-  if (cleanValue.length <= maxLength) {
-    return cleanValue;
-  }
-
-  return `${cleanValue.slice(0, maxLength - 3)}...`;
+function getDefaultQuestionContext() {
+  return "Even if you are not sure what to ask yet, that is okay. Most families know recruiting matters, but they do not know where to start. The Readiness Check gives us the starting point so we can see what is clear, what is missing, and what needs attention first.";
 }
 
-function buildFallbackQuestionContext({ athleteName, biggestQuestion, aiError }) {
-  const question = limitEmailText(biggestQuestion);
+function getInitialEmailQueueFields(biggestQuestion) {
+  const hasQuestion = Boolean(cleanText(biggestQuestion));
+  const now = new Date().toISOString();
 
-  if (!question) {
+  if (hasQuestion) {
     return {
-      theme: "unclear",
-      label: "Where To Start",
-      quote: null,
-      text: "Even if you are not sure what to ask yet, that is okay. Most families know recruiting matters, but they do not know where to start. The Readiness Check gives us the starting point so we can see what is clear, what is missing, and what needs attention first.",
-      aiUsed: false,
-      aiError: null
+      first_email_status: "pending_ai_context",
+      first_email_queued_at: now,
+      first_email_context_ready_at: null,
+      first_email_question_context: null,
+      biggest_question_theme: null,
+      first_email_ai_used: false,
+      first_email_ai_error: null
     };
   }
 
   return {
-    theme: "general",
-    label: "What You Shared",
-    quote: question,
-    text: `That is the right kind of question to ask. Recruiting gets hard when families are trying to make decisions with partial information. The Readiness Check gives us the details we need to understand ${athleteName}'s film, academics, outreach, school list, and timing before pointing you toward the next step.`,
-    aiUsed: false,
-    aiError: aiError || null
+    first_email_status: "ready_to_send",
+    first_email_queued_at: now,
+    first_email_context_ready_at: now,
+    first_email_question_context: getDefaultQuestionContext(),
+    biggest_question_theme: "unclear",
+    first_email_ai_used: false,
+    first_email_ai_error: null
   };
-}
-
-function extractResponseOutputText(responseData) {
-  if (typeof responseData?.output_text === "string") {
-    return responseData.output_text;
-  }
-
-  if (!Array.isArray(responseData?.output)) {
-    return "";
-  }
-
-  for (const outputItem of responseData.output) {
-    if (!Array.isArray(outputItem?.content)) {
-      continue;
-    }
-
-    for (const contentItem of outputItem.content) {
-      if (contentItem?.type === "output_text" && typeof contentItem.text === "string") {
-        return contentItem.text;
-      }
-    }
-  }
-
-  return "";
-}
-
-function validateAiQuestionContext(value) {
-  if (!value || typeof value !== "object") {
-    throw new Error("AI response was not an object.");
-  }
-
-  const theme = allowedQuestionThemes.has(value.theme) ? value.theme : "general";
-  const personalizedContext = limitEmailText(value.personalized_context, 520);
-
-  if (!personalizedContext) {
-    throw new Error("AI response did not include personalized context.");
-  }
-
-  return {
-    theme,
-    text: personalizedContext
-  };
-}
-
-async function generateAiQuestionContext({ athleteName, biggestQuestion }) {
-  if (typeof fetch !== "function") {
-    throw new Error("Fetch API is not available in this runtime.");
-  }
-
-  const question = limitEmailText(biggestQuestion);
-
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${openAiApiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: openAiModel,
-      input: [
-        {
-          role: "system",
-          content: [
-            "You write short PlayBoard email personalization blocks for parents of high school football athletes.",
-            "Voice: direct, practical, coach-like, human, and action-oriented.",
-            "Write 2 to 4 short sentences. Maximum 85 words.",
-            "Do not sound like software. Do not use hype or corporate language.",
-            "Do not promise offers, scholarships, coach responses, roster spots, or a specific college level.",
-            "Do not say the athlete is a D1, D2, D3, NAIA, JUCO, or recruitable player.",
-            "Do not give definitive NCAA eligibility, admissions, financial aid, scholarship, legal, medical, transfer, or NIL advice.",
-            "Point the family toward the Recruiting Readiness Check as the next step.",
-            "Mention the athlete by first name naturally, but do not overuse the name."
-          ].join(" ")
-        },
-        {
-          role: "user",
-          content: [
-            `Athlete first name: ${athleteName}`,
-            `Parent's biggest recruiting question: ${question}`,
-            "Return a theme and one email-ready personalization paragraph."
-          ].join("\n")
-        }
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "playboard_email_question_context",
-          schema: {
-            type: "object",
-            properties: {
-              theme: {
-                type: "string",
-                enum: Array.from(allowedQuestionThemes),
-                description: "The main theme of the parent's recruiting question."
-              },
-              personalized_context: {
-                type: "string",
-                description: "A short PlayBoard-style paragraph that acknowledges the parent's question and points toward the Readiness Check."
-              }
-            },
-            required: ["theme", "personalized_context"],
-            additionalProperties: false
-          },
-          strict: true
-        }
-      },
-      max_output_tokens: 220
-    })
-  });
-
-  const responseText = await response.text();
-  let responseData = null;
-
-  try {
-    responseData = responseText ? JSON.parse(responseText) : null;
-  } catch (error) {
-    throw new Error("OpenAI response was not valid JSON.");
-  }
-
-  if (!response.ok) {
-    const message = responseData?.error?.message || responseText || "Unknown OpenAI API error.";
-    throw new Error(`OpenAI API error: ${message}`);
-  }
-
-  const outputText = extractResponseOutputText(responseData);
-
-  if (!outputText) {
-    throw new Error("OpenAI response did not include output_text.");
-  }
-
-  let parsedOutput = null;
-
-  try {
-    parsedOutput = JSON.parse(outputText);
-  } catch (error) {
-    throw new Error("OpenAI output_text was not valid JSON.");
-  }
-
-  return validateAiQuestionContext(parsedOutput);
-}
-
-async function createEmailQuestionContext({ athleteName, biggestQuestion }) {
-  const question = limitEmailText(biggestQuestion);
-  const fallback = buildFallbackQuestionContext({ athleteName, biggestQuestion });
-
-  if (!question) {
-    return fallback;
-  }
-
-  if (!openAiApiKey) {
-    return buildFallbackQuestionContext({
-      athleteName,
-      biggestQuestion,
-      aiError: "OPENAI_API_KEY is not configured."
-    });
-  }
-
-  try {
-    const aiContext = await generateAiQuestionContext({ athleteName, biggestQuestion: question });
-
-    return {
-      theme: aiContext.theme,
-      label: "What You Shared",
-      quote: question,
-      text: aiContext.text,
-      aiUsed: true,
-      aiError: null
-    };
-  } catch (error) {
-    console.error("OpenAI personalization error:", error);
-
-    return buildFallbackQuestionContext({
-      athleteName,
-      biggestQuestion: question,
-      aiError: error.message || "Unknown OpenAI personalization error."
-    });
-  }
-}
-
-function buildQuestionContextHtml(questionContext) {
-  const safeLabel = escapeHtml(questionContext.label || "What You Shared");
-  const safeText = escapeHtml(questionContext.text);
-  const safeQuote = questionContext.quote ? escapeHtml(questionContext.quote) : "";
-  const quoteHtml = safeQuote
-    ? `<p style="margin:0 0 14px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">“${safeQuote}”</p>`
-    : `<p style="margin:0 0 12px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">Even if you are not sure what to ask yet, that is okay.</p>`;
-
-  return `
-    <tr>
-      <td style="padding:0 28px 8px 28px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#090b0f; border:1px solid rgba(113,246,251,0.28); border-radius:18px;">
-          <tr>
-            <td style="padding:20px;">
-              <div style="color:#71f6fb; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px;">${safeLabel}</div>
-              ${quoteHtml}
-              <p style="margin:0; color:#b5bec8; font-size:15px; line-height:24px;">${safeText}</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  `;
-}
-
-function buildQuestionContextText(questionContext) {
-  if (questionContext.quote) {
-    return `You mentioned this question:\n\n"${questionContext.quote}"\n\n${questionContext.text}`;
-  }
-
-  return questionContext.text;
-}
-
-function buildFirstEmail({ athleteFirstName, readinessCheckUrl, questionContext }) {
-  const athleteName = athleteFirstName || "your athlete";
-  const safeAthleteName = escapeHtml(athleteName);
-  const safeReadinessCheckUrl = escapeHtml(readinessCheckUrl);
-  const questionContextText = buildQuestionContextText(questionContext);
-  const questionContextHtml = buildQuestionContextHtml(questionContext);
-
-  const text = `Hi,
-
-Thanks for reaching out about PlayBoard for ${athleteName}.
-
-${questionContextText}
-
-Most families are not short on effort.
-
-They are short on a clear recruiting plan.
-
-PlayBoard helps ${athleteName} understand where he stands, build a realistic school-target board, and know what to do next each week.
-
-But this is not a parent-only process.
-
-College coaches want to see the athlete take ownership.
-
-They want to know:
-
-- Can he communicate?
-- Can he follow up?
-- Can he handle responsibility?
-- Does he understand his own recruiting process?
-
-That is why PlayBoard works directly with ${athleteName}.
-
-We mentor and guide him through the recruiting process so he knows what to do, why it matters, and what to report back.
-
-That work may include:
-
-- Reviewing film, Hudl, social media, academics, and outreach
-- Building a realistic school-target board
-- Knowing which coaches to contact
-- Preparing better coach emails
-- Following up the right way
-- Setting weekly recruiting goals
-- Tracking progress
-- Staying accountable to the plan
-
-Parents stay informed.
-
-You will receive weekly email updates on what ${athleteName} worked on, what progress was made, what needs attention, and how you can support him without taking over.
-
-Most athletes should expect to spend 1 to 5+ hours per week on recruiting.
-
-Some weeks may be simple: a short check-in, a follow-up, or a profile update.
-
-Other weeks may take more time: sending coach emails, reviewing film, researching schools, preparing for camps, or responding to coach interest.
-
-The next step is the Recruiting Readiness Check.
-
-It gives us enough information to understand where ${athleteName} is right now and what kind of plan he may need.
-
-You do not need to have every answer.
-
-If something is missing, that helps us see where the plan needs to start.
-
-Complete the Recruiting Readiness Check here:
-
-${readinessCheckUrl}
-
-There are only 4 spots left right now, so families who are ready to move forward should act quickly.
-
-There is also a 30-day money-back guarantee. If the first month does not give your family a clearer recruiting plan and a better understanding of what needs to happen next, we will refund your first month.
-
-Recruiting is not a hope. It is a plan.
-
-— PlayBoard`;
-
-  const html = `
-    <!doctype html>
-    <html>
-      <body style="margin:0; padding:0; background:#050505; color:#ffffff; font-family: Arial, Helvetica, sans-serif;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#050505; margin:0; padding:0; width:100%;">
-          <tr>
-            <td align="center" style="padding:28px 14px;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:680px; border-collapse:collapse;">
-                <tr>
-                  <td style="padding:0 0 14px 0;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                      <tr>
-                        <td align="left" style="vertical-align:middle;">
-                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                            <tr>
-                              <td style="width:40px; height:40px; border-radius:13px; background:#ee1b9c; color:#ffffff; font-size:13px; font-weight:900; text-align:center; vertical-align:middle; letter-spacing:-0.02em;">PB</td>
-                              <td style="padding-left:12px; color:#ffffff; font-size:20px; line-height:24px; font-weight:900; letter-spacing:-0.04em;">PlayBoard</td>
-                            </tr>
-                          </table>
-                        </td>
-                        <td align="right" style="vertical-align:middle; color:#71f6fb; font-size:11px; line-height:15px; font-weight:900; text-transform:uppercase; letter-spacing:0.12em;">
-                          Recruiting Readiness
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td style="height:4px; line-height:4px; font-size:4px; background:#71f6fb; border-radius:999px 999px 0 0;">&nbsp;</td>
-                </tr>
-
-                <tr>
-                  <td style="background:#12161b; border:1px solid rgba(255,255,255,0.14); border-top:0; border-radius:0 0 24px 24px; overflow:hidden;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                      <tr>
-                        <td style="padding:34px 28px 18px 28px; background:#12161b;">
-                          <div style="color:#71f6fb; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:12px;">Next Step</div>
-                          <h1 style="margin:0; color:#ffffff; font-size:34px; line-height:36px; font-weight:900; letter-spacing:-0.05em; text-transform:uppercase;">Build the plan.</h1>
-                          <p style="margin:16px 0 0 0; color:#e6ebf0; font-size:17px; line-height:26px;">Thanks for reaching out about PlayBoard for <strong style="color:#ffffff;">${safeAthleteName}</strong>.</p>
-                        </td>
-                      </tr>
-
-                      ${questionContextHtml}
-
-                      <tr>
-                        <td style="padding:8px 28px 8px 28px;">
-                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#090b0f; border:1px solid rgba(113,246,251,0.28); border-radius:18px;">
-                            <tr>
-                              <td style="padding:20px 20px 18px 20px;">
-                                <p style="margin:0 0 12px 0; color:#ffffff; font-size:18px; line-height:27px; font-weight:800;">Most families are not short on effort.</p>
-                                <p style="margin:0; color:#b5bec8; font-size:16px; line-height:25px;">They are short on a clear recruiting plan.</p>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td style="padding:14px 28px 0 28px;">
-                          <p style="margin:0 0 16px 0; color:#b5bec8; font-size:16px; line-height:25px;">PlayBoard helps <strong style="color:#ffffff;">${safeAthleteName}</strong> understand where he stands, build a realistic school-target board, and know what to do next each week.</p>
-                          <p style="margin:0 0 16px 0; color:#b5bec8; font-size:16px; line-height:25px;">But this is not a parent-only process.</p>
-                          <p style="margin:0 0 12px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">College coaches want to see the athlete take ownership.</p>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td style="padding:0 28px 8px 28px;">
-                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; border-spacing:0 8px;">
-                            <tr>
-                              <td style="width:10px; vertical-align:top; padding-top:9px;"><span style="display:block; width:7px; height:7px; border-radius:999px; background:#f7e913;">&nbsp;</span></td>
-                              <td style="color:#e6ebf0; font-size:15px; line-height:23px; padding-left:8px;">Can he communicate?</td>
-                            </tr>
-                            <tr>
-                              <td style="width:10px; vertical-align:top; padding-top:9px;"><span style="display:block; width:7px; height:7px; border-radius:999px; background:#f7e913;">&nbsp;</span></td>
-                              <td style="color:#e6ebf0; font-size:15px; line-height:23px; padding-left:8px;">Can he follow up?</td>
-                            </tr>
-                            <tr>
-                              <td style="width:10px; vertical-align:top; padding-top:9px;"><span style="display:block; width:7px; height:7px; border-radius:999px; background:#f7e913;">&nbsp;</span></td>
-                              <td style="color:#e6ebf0; font-size:15px; line-height:23px; padding-left:8px;">Can he handle responsibility?</td>
-                            </tr>
-                            <tr>
-                              <td style="width:10px; vertical-align:top; padding-top:9px;"><span style="display:block; width:7px; height:7px; border-radius:999px; background:#f7e913;">&nbsp;</span></td>
-                              <td style="color:#e6ebf0; font-size:15px; line-height:23px; padding-left:8px;">Does he understand his own recruiting process?</td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td style="padding:8px 28px 8px 28px;">
-                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#171d24; border:1px solid rgba(255,255,255,0.14); border-radius:18px;">
-                            <tr>
-                              <td style="padding:20px;">
-                                <div style="color:#71f6fb; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px;">How PlayBoard Works</div>
-                                <p style="margin:0 0 14px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">That is why PlayBoard works directly with ${safeAthleteName}.</p>
-                                <p style="margin:0 0 14px 0; color:#b5bec8; font-size:15px; line-height:24px;">We mentor and guide him through the recruiting process so he knows what to do, why it matters, and what to report back.</p>
-                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; border-spacing:0 7px;">
-                                  <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Reviewing film, Hudl, social media, academics, and outreach</td></tr>
-                                  <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Building a realistic school-target board</td></tr>
-                                  <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Knowing which coaches to contact</td></tr>
-                                  <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Preparing better coach emails</td></tr>
-                                  <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Following up the right way</td></tr>
-                                  <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Setting weekly recruiting goals</td></tr>
-                                  <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Tracking progress and staying accountable</td></tr>
-                                </table>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td style="padding:8px 28px 8px 28px;">
-                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#090b0f; border:1px solid rgba(247,233,19,0.34); border-radius:18px;">
-                            <tr>
-                              <td style="padding:20px;">
-                                <div style="color:#f7e913; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px;">Parent Updates</div>
-                                <p style="margin:0; color:#b5bec8; font-size:15px; line-height:24px;">You will receive weekly email updates on what <strong style="color:#ffffff;">${safeAthleteName}</strong> worked on, what progress was made, what needs attention, and how you can support him without taking over.</p>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td style="padding:8px 28px 8px 28px;">
-                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#171d24; border:1px solid rgba(255,255,255,0.14); border-radius:18px;">
-                            <tr>
-                              <td style="padding:20px;">
-                                <div style="color:#71f6fb; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px;">Weekly Work</div>
-                                <p style="margin:0 0 12px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">Most athletes should expect to spend 1 to 5+ hours per week on recruiting.</p>
-                                <p style="margin:0 0 12px 0; color:#b5bec8; font-size:15px; line-height:24px;">Some weeks may be simple: a short check-in, a follow-up, or a profile update.</p>
-                                <p style="margin:0; color:#b5bec8; font-size:15px; line-height:24px;">Other weeks may take more time: sending coach emails, reviewing film, researching schools, preparing for camps, or responding to coach interest.</p>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td style="padding:18px 28px 20px 28px;">
-                          <h2 style="margin:0 0 12px 0; color:#ffffff; font-size:24px; line-height:29px; font-weight:900; letter-spacing:-0.04em; text-transform:uppercase;">The next step is the Recruiting Readiness Check.</h2>
-                          <p style="margin:0 0 14px 0; color:#b5bec8; font-size:16px; line-height:25px;">It gives us enough information to understand where <strong style="color:#ffffff;">${safeAthleteName}</strong> is right now and what kind of plan he may need.</p>
-                          <p style="margin:0 0 22px 0; color:#b5bec8; font-size:16px; line-height:25px;">You do not need to have every answer. If something is missing, that helps us see where the plan needs to start.</p>
-                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                            <tr>
-                              <td style="border-radius:999px; background:#f7e913;">
-                                <a href="${safeReadinessCheckUrl}" style="display:inline-block; padding:15px 22px; color:#080808; font-size:13px; line-height:16px; font-weight:900; text-decoration:none; text-transform:uppercase; letter-spacing:0.08em; border-radius:999px;">Complete the Readiness Check</a>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td style="padding:0 28px 26px 28px;">
-                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#090b0f; border:1px solid rgba(238,27,156,0.35); border-radius:18px;">
-                            <tr>
-                              <td style="padding:18px 20px;">
-                                <p style="margin:0 0 10px 0; color:#ffffff; font-size:15px; line-height:23px; font-weight:800;">There are only 4 spots left right now.</p>
-                                <p style="margin:0; color:#b5bec8; font-size:15px; line-height:23px;">There is also a 30-day money-back guarantee. If the first month does not give your family a clearer recruiting plan and a better understanding of what needs to happen next, we will refund your first month.</p>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td style="padding:24px 28px 30px 28px; border-top:1px solid rgba(255,255,255,0.12); background:#090b0f;">
-                          <p style="margin:0; color:#ffffff; font-size:20px; line-height:28px; font-weight:900; letter-spacing:-0.03em;">Recruiting is not a hope. <span style="color:#f7e913;">It is a plan.</span></p>
-                          <p style="margin:16px 0 0 0; color:#b5bec8; font-size:14px; line-height:22px;">— PlayBoard</p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td style="padding:18px 8px 0 8px; color:#7e8792; font-size:12px; line-height:18px; text-align:center;">
-                    You received this because you requested information from PlayBoard.
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-    </html>
-  `;
-
-  return { text, html };
-}
-
-async function markFirstEmailResult({ leadId, readinessCheckUrl, emailSent, resendId, errorMessage, questionContext }) {
-  const update = {
-    readiness_check_url: readinessCheckUrl,
-    first_email_sent: emailSent,
-    first_email_sent_at: emailSent ? new Date().toISOString() : null,
-    first_email_resend_id: resendId || null,
-    first_email_error: errorMessage || null,
-    biggest_question_theme: questionContext?.theme || null,
-    first_email_question_context: questionContext?.text || null,
-    first_email_ai_used: Boolean(questionContext?.aiUsed),
-    first_email_ai_error: questionContext?.aiError || null
-  };
-
-  const { error } = await supabase
-    .from("leads")
-    .update(update)
-    .eq("id", leadId);
-
-  if (error) {
-    console.error("Lead email tracking update error:", error);
-  }
 }
 
 module.exports = async function handler(req, res) {
@@ -663,8 +129,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const readinessCheckUrl = buildReadinessCheckUrl(req, "PENDING_LEAD_ID");
-
     const { data, error } = await supabase
       .from("leads")
       .insert({
@@ -693,67 +157,26 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const finalReadinessCheckUrl = readinessCheckUrl.replace("PENDING_LEAD_ID", data.id);
-    const questionContext = await createEmailQuestionContext({
-      athleteName: athleteFirstName,
-      biggestQuestion
-    });
-    let emailSent = false;
-    let emailResendId = null;
-    let emailError = null;
+    const readinessCheckUrl = buildReadinessCheckUrl(req, data.id);
+    const emailQueueFields = getInitialEmailQueueFields(biggestQuestion);
 
-    if (!resend || !playboardFromEmail) {
-      emailError = "Missing RESEND_API_KEY or PLAYBOARD_FROM_EMAIL.";
-    } else {
-      try {
-        const email = buildFirstEmail({
-          athleteFirstName,
-          readinessCheckUrl: finalReadinessCheckUrl,
-          questionContext
-        });
+    const { error: updateError } = await supabase
+      .from("leads")
+      .update({
+        readiness_check_url: readinessCheckUrl,
+        ...emailQueueFields
+      })
+      .eq("id", data.id);
 
-        const emailPayload = {
-          from: playboardFromEmail,
-          to: parentEmail.toLowerCase(),
-          subject: "Your next step with PlayBoard",
-          text: email.text,
-          html: email.html
-        };
-
-        if (playboardReplyToEmail) {
-          emailPayload.replyTo = playboardReplyToEmail;
-        }
-
-        const { data: emailData, error: resendError } = await resend.emails.send(emailPayload);
-
-        if (resendError) {
-          emailError = resendError.message || JSON.stringify(resendError);
-          console.error("Resend email error:", resendError);
-        } else {
-          emailSent = true;
-          emailResendId = emailData?.id || null;
-        }
-      } catch (error) {
-        emailError = error.message || "Unknown Resend email error.";
-        console.error("Lead email send error:", error);
-      }
+    if (updateError) {
+      console.error("Lead email queue update error:", updateError);
     }
-
-    await markFirstEmailResult({
-      leadId: data.id,
-      readinessCheckUrl: finalReadinessCheckUrl,
-      emailSent,
-      resendId: emailResendId,
-      errorMessage: emailError,
-      questionContext
-    });
 
     return res.status(200).json({
       success: true,
       leadId: data.id,
-      emailSent,
-      aiPersonalizationUsed: questionContext.aiUsed,
-      message: "Got it. We have your information. Check your email for the next step with PlayBoard."
+      emailStatus: emailQueueFields.first_email_status,
+      message: "Got it. We have your information. We will email the next step shortly."
     });
   } catch (error) {
     console.error("Lead API error:", error);
