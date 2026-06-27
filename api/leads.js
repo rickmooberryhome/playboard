@@ -93,7 +93,7 @@ We mentor and guide him through the recruiting process so he knows what to do, w
 
 That work may include:
 
-- Reviewing film, Hudl, X, academics, and outreach
+- Reviewing film, Hudl, social media, academics, and outreach
 - Building a realistic school-target board
 - Knowing which coaches to contact
 - Preparing better coach emails
@@ -228,7 +228,7 @@ Recruiting is not a hope. It is a plan.
                                 <p style="margin:0 0 14px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">That is why PlayBoard works directly with ${safeAthleteName}.</p>
                                 <p style="margin:0 0 14px 0; color:#b5bec8; font-size:15px; line-height:24px;">We mentor and guide him through the recruiting process so he knows what to do, why it matters, and what to report back.</p>
                                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; border-spacing:0 7px;">
-                                  <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Reviewing film, Hudl, X, academics, and outreach</td></tr>
+                                  <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Reviewing film, Hudl, social media, academics, and outreach</td></tr>
                                   <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Building a realistic school-target board</td></tr>
                                   <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Knowing which coaches to contact</td></tr>
                                   <tr><td style="color:#e6ebf0; font-size:15px; line-height:23px;">• Preparing better coach emails</td></tr>
