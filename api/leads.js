@@ -7,6 +7,21 @@ const resendApiKey = process.env.RESEND_API_KEY;
 const playboardFromEmail = process.env.PLAYBOARD_FROM_EMAIL;
 const playboardReplyToEmail = process.env.PLAYBOARD_REPLY_TO_EMAIL;
 const configuredSiteUrl = process.env.PLAYBOARD_SITE_URL;
+const openAiApiKey = process.env.OPENAI_API_KEY;
+const openAiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+const allowedQuestionThemes = new Set([
+  "level_fit",
+  "film",
+  "coach_outreach",
+  "camps",
+  "timeline",
+  "social_media",
+  "academics",
+  "confidence",
+  "general",
+  "unclear"
+]);
 
 function normalizeSupabaseUrl(value) {
   if (!value) {
@@ -62,7 +77,7 @@ function buildReadinessCheckUrl(req, leadId) {
 }
 
 function limitEmailText(value, maxLength = 600) {
-  const cleanValue = cleanText(value);
+  const cleanValue = cleanText(value).replace(/\s+/g, " ");
 
   if (cleanValue.length <= maxLength) {
     return cleanValue;
@@ -71,70 +86,252 @@ function limitEmailText(value, maxLength = 600) {
   return `${cleanValue.slice(0, maxLength - 3)}...`;
 }
 
-function buildQuestionContext({ athleteName, biggestQuestion }) {
+function buildFallbackQuestionContext({ athleteName, biggestQuestion, aiError }) {
   const question = limitEmailText(biggestQuestion);
 
   if (!question) {
     return {
-      text: `Even if you are not sure what to ask yet, that is okay.
-
-Most families know recruiting matters, but they do not know where to start. The Readiness Check gives us the starting point so we can see what is clear, what is missing, and what needs attention first.`,
-      html: `
-        <tr>
-          <td style="padding:0 28px 8px 28px;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#090b0f; border:1px solid rgba(113,246,251,0.28); border-radius:18px;">
-              <tr>
-                <td style="padding:20px;">
-                  <div style="color:#71f6fb; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px;">Where To Start</div>
-                  <p style="margin:0 0 12px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">Even if you are not sure what to ask yet, that is okay.</p>
-                  <p style="margin:0; color:#b5bec8; font-size:15px; line-height:24px;">Most families know recruiting matters, but they do not know where to start. The Readiness Check gives us the starting point so we can see what is clear, what is missing, and what needs attention first.</p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      `
+      theme: "unclear",
+      label: "Where To Start",
+      quote: null,
+      text: "Even if you are not sure what to ask yet, that is okay. Most families know recruiting matters, but they do not know where to start. The Readiness Check gives us the starting point so we can see what is clear, what is missing, and what needs attention first.",
+      aiUsed: false,
+      aiError: null
     };
   }
 
-  const safeQuestion = escapeHtml(question);
-  const safeAthleteName = escapeHtml(athleteName);
-
   return {
-    text: `You mentioned this question:
-
-"${question}"
-
-That is the right kind of question to ask. Recruiting gets hard when families are trying to make decisions with partial information. The Readiness Check gives us the details we need to understand ${athleteName}'s film, academics, outreach, school list, and timing before pointing you toward the next step.`,
-    html: `
-      <tr>
-        <td style="padding:0 28px 8px 28px;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#090b0f; border:1px solid rgba(113,246,251,0.28); border-radius:18px;">
-            <tr>
-              <td style="padding:20px;">
-                <div style="color:#71f6fb; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px;">What You Shared</div>
-                <p style="margin:0 0 14px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">“${safeQuestion}”</p>
-                <p style="margin:0; color:#b5bec8; font-size:15px; line-height:24px;">That is the right kind of question to ask. Recruiting gets hard when families are trying to make decisions with partial information. The Readiness Check gives us the details we need to understand ${safeAthleteName}'s film, academics, outreach, school list, and timing before pointing you toward the next step.</p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    `
+    theme: "general",
+    label: "What You Shared",
+    quote: question,
+    text: `That is the right kind of question to ask. Recruiting gets hard when families are trying to make decisions with partial information. The Readiness Check gives us the details we need to understand ${athleteName}'s film, academics, outreach, school list, and timing before pointing you toward the next step.`,
+    aiUsed: false,
+    aiError: aiError || null
   };
 }
 
-function buildFirstEmail({ athleteFirstName, readinessCheckUrl, biggestQuestion }) {
+function extractResponseOutputText(responseData) {
+  if (typeof responseData?.output_text === "string") {
+    return responseData.output_text;
+  }
+
+  if (!Array.isArray(responseData?.output)) {
+    return "";
+  }
+
+  for (const outputItem of responseData.output) {
+    if (!Array.isArray(outputItem?.content)) {
+      continue;
+    }
+
+    for (const contentItem of outputItem.content) {
+      if (contentItem?.type === "output_text" && typeof contentItem.text === "string") {
+        return contentItem.text;
+      }
+    }
+  }
+
+  return "";
+}
+
+function validateAiQuestionContext(value) {
+  if (!value || typeof value !== "object") {
+    throw new Error("AI response was not an object.");
+  }
+
+  const theme = allowedQuestionThemes.has(value.theme) ? value.theme : "general";
+  const personalizedContext = limitEmailText(value.personalized_context, 520);
+
+  if (!personalizedContext) {
+    throw new Error("AI response did not include personalized context.");
+  }
+
+  return {
+    theme,
+    text: personalizedContext
+  };
+}
+
+async function generateAiQuestionContext({ athleteName, biggestQuestion }) {
+  if (typeof fetch !== "function") {
+    throw new Error("Fetch API is not available in this runtime.");
+  }
+
+  const question = limitEmailText(biggestQuestion);
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${openAiApiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: openAiModel,
+      input: [
+        {
+          role: "system",
+          content: [
+            "You write short PlayBoard email personalization blocks for parents of high school football athletes.",
+            "Voice: direct, practical, coach-like, human, and action-oriented.",
+            "Write 2 to 4 short sentences. Maximum 85 words.",
+            "Do not sound like software. Do not use hype or corporate language.",
+            "Do not promise offers, scholarships, coach responses, roster spots, or a specific college level.",
+            "Do not say the athlete is a D1, D2, D3, NAIA, JUCO, or recruitable player.",
+            "Do not give definitive NCAA eligibility, admissions, financial aid, scholarship, legal, medical, transfer, or NIL advice.",
+            "Point the family toward the Recruiting Readiness Check as the next step.",
+            "Mention the athlete by first name naturally, but do not overuse the name."
+          ].join(" ")
+        },
+        {
+          role: "user",
+          content: [
+            `Athlete first name: ${athleteName}`,
+            `Parent's biggest recruiting question: ${question}`,
+            "Return a theme and one email-ready personalization paragraph."
+          ].join("\n")
+        }
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "playboard_email_question_context",
+          schema: {
+            type: "object",
+            properties: {
+              theme: {
+                type: "string",
+                enum: Array.from(allowedQuestionThemes),
+                description: "The main theme of the parent's recruiting question."
+              },
+              personalized_context: {
+                type: "string",
+                description: "A short PlayBoard-style paragraph that acknowledges the parent's question and points toward the Readiness Check."
+              }
+            },
+            required: ["theme", "personalized_context"],
+            additionalProperties: false
+          },
+          strict: true
+        }
+      },
+      max_output_tokens: 220
+    })
+  });
+
+  const responseText = await response.text();
+  let responseData = null;
+
+  try {
+    responseData = responseText ? JSON.parse(responseText) : null;
+  } catch (error) {
+    throw new Error("OpenAI response was not valid JSON.");
+  }
+
+  if (!response.ok) {
+    const message = responseData?.error?.message || responseText || "Unknown OpenAI API error.";
+    throw new Error(`OpenAI API error: ${message}`);
+  }
+
+  const outputText = extractResponseOutputText(responseData);
+
+  if (!outputText) {
+    throw new Error("OpenAI response did not include output_text.");
+  }
+
+  let parsedOutput = null;
+
+  try {
+    parsedOutput = JSON.parse(outputText);
+  } catch (error) {
+    throw new Error("OpenAI output_text was not valid JSON.");
+  }
+
+  return validateAiQuestionContext(parsedOutput);
+}
+
+async function createEmailQuestionContext({ athleteName, biggestQuestion }) {
+  const question = limitEmailText(biggestQuestion);
+  const fallback = buildFallbackQuestionContext({ athleteName, biggestQuestion });
+
+  if (!question) {
+    return fallback;
+  }
+
+  if (!openAiApiKey) {
+    return buildFallbackQuestionContext({
+      athleteName,
+      biggestQuestion,
+      aiError: "OPENAI_API_KEY is not configured."
+    });
+  }
+
+  try {
+    const aiContext = await generateAiQuestionContext({ athleteName, biggestQuestion: question });
+
+    return {
+      theme: aiContext.theme,
+      label: "What You Shared",
+      quote: question,
+      text: aiContext.text,
+      aiUsed: true,
+      aiError: null
+    };
+  } catch (error) {
+    console.error("OpenAI personalization error:", error);
+
+    return buildFallbackQuestionContext({
+      athleteName,
+      biggestQuestion: question,
+      aiError: error.message || "Unknown OpenAI personalization error."
+    });
+  }
+}
+
+function buildQuestionContextHtml(questionContext) {
+  const safeLabel = escapeHtml(questionContext.label || "What You Shared");
+  const safeText = escapeHtml(questionContext.text);
+  const safeQuote = questionContext.quote ? escapeHtml(questionContext.quote) : "";
+  const quoteHtml = safeQuote
+    ? `<p style="margin:0 0 14px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">“${safeQuote}”</p>`
+    : `<p style="margin:0 0 12px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">Even if you are not sure what to ask yet, that is okay.</p>`;
+
+  return `
+    <tr>
+      <td style="padding:0 28px 8px 28px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#090b0f; border:1px solid rgba(113,246,251,0.28); border-radius:18px;">
+          <tr>
+            <td style="padding:20px;">
+              <div style="color:#71f6fb; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px;">${safeLabel}</div>
+              ${quoteHtml}
+              <p style="margin:0; color:#b5bec8; font-size:15px; line-height:24px;">${safeText}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+}
+
+function buildQuestionContextText(questionContext) {
+  if (questionContext.quote) {
+    return `You mentioned this question:\n\n"${questionContext.quote}"\n\n${questionContext.text}`;
+  }
+
+  return questionContext.text;
+}
+
+function buildFirstEmail({ athleteFirstName, readinessCheckUrl, questionContext }) {
   const athleteName = athleteFirstName || "your athlete";
   const safeAthleteName = escapeHtml(athleteName);
   const safeReadinessCheckUrl = escapeHtml(readinessCheckUrl);
-  const questionContext = buildQuestionContext({ athleteName, biggestQuestion });
+  const questionContextText = buildQuestionContextText(questionContext);
+  const questionContextHtml = buildQuestionContextHtml(questionContext);
 
   const text = `Hi,
 
 Thanks for reaching out about PlayBoard for ${athleteName}.
 
-${questionContext.text}
+${questionContextText}
 
 Most families are not short on effort.
 
@@ -241,7 +438,7 @@ Recruiting is not a hope. It is a plan.
                         </td>
                       </tr>
 
-                      ${questionContext.html}
+                      ${questionContextHtml}
 
                       <tr>
                         <td style="padding:8px 28px 8px 28px;">
@@ -392,13 +589,17 @@ Recruiting is not a hope. It is a plan.
   return { text, html };
 }
 
-async function markFirstEmailResult({ leadId, readinessCheckUrl, emailSent, resendId, errorMessage }) {
+async function markFirstEmailResult({ leadId, readinessCheckUrl, emailSent, resendId, errorMessage, questionContext }) {
   const update = {
     readiness_check_url: readinessCheckUrl,
     first_email_sent: emailSent,
     first_email_sent_at: emailSent ? new Date().toISOString() : null,
     first_email_resend_id: resendId || null,
-    first_email_error: errorMessage || null
+    first_email_error: errorMessage || null,
+    biggest_question_theme: questionContext?.theme || null,
+    first_email_question_context: questionContext?.text || null,
+    first_email_ai_used: Boolean(questionContext?.aiUsed),
+    first_email_ai_error: questionContext?.aiError || null
   };
 
   const { error } = await supabase
@@ -493,6 +694,10 @@ module.exports = async function handler(req, res) {
     }
 
     const finalReadinessCheckUrl = readinessCheckUrl.replace("PENDING_LEAD_ID", data.id);
+    const questionContext = await createEmailQuestionContext({
+      athleteName: athleteFirstName,
+      biggestQuestion
+    });
     let emailSent = false;
     let emailResendId = null;
     let emailError = null;
@@ -504,7 +709,7 @@ module.exports = async function handler(req, res) {
         const email = buildFirstEmail({
           athleteFirstName,
           readinessCheckUrl: finalReadinessCheckUrl,
-          biggestQuestion
+          questionContext
         });
 
         const emailPayload = {
@@ -539,13 +744,15 @@ module.exports = async function handler(req, res) {
       readinessCheckUrl: finalReadinessCheckUrl,
       emailSent,
       resendId: emailResendId,
-      errorMessage: emailError
+      errorMessage: emailError,
+      questionContext
     });
 
     return res.status(200).json({
       success: true,
       leadId: data.id,
       emailSent,
+      aiPersonalizationUsed: questionContext.aiUsed,
       message: "Got it. We have your information. Check your email for the next step with PlayBoard."
     });
   } catch (error) {
