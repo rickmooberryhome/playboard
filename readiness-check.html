@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recruiting Readiness Check | PlayBoard</title>
+  <meta name="description" content="Tell PlayBoard where your athlete is right now so we can understand the recruiting plan he may need." />
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./form-styles.css" />
+  <link rel="stylesheet" href="./readiness-check.css" />
+</head>
+<body class="readiness-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header" data-header>
+    <a class="brand" href="./#main" aria-label="PlayBoard home">
+      <span class="brand-mark">PB</span>
+      <span class="brand-text">PlayBoard</span>
+    </a>
+
+    <nav class="site-nav" id="site-nav" data-nav>
+      <a href="./#problem">Problem</a>
+      <a href="./#solution">Solution</a>
+      <a href="./#intake">Get info</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="section readiness-hero">
+      <div class="section-header center">
+        <p class="eyebrow">Recruiting Readiness Check</p>
+        <h1>Tell us where he stands right now.</h1>
+        <p class="hero-lede">
+          This gives PlayBoard enough information to understand the athlete's current recruiting picture and what kind of plan may make sense next.
+        </p>
+      </div>
+    </section>
+
+    <section class="section readiness-layout">
+      <div class="readiness-copy">
+        <p class="eyebrow">Before you start</p>
+        <h2>Not knowing an answer is okay.</h2>
+        <p>
+          If something is missing, put "Not sure" or leave the optional field blank.
+          That helps us see where the plan needs to start.
+        </p>
+
+        <div class="solid-panel readiness-panel">
+          <span class="panel-label">What this helps us review</span>
+          <div class="panel-row"><strong>Fit</strong><span>Grade, school, position, size, and current profile.</span></div>
+          <div class="panel-row"><strong>Film</strong><span>Hudl, highlight film, and what coaches can see now.</span></div>
+          <div class="panel-row"><strong>Board</strong><span>Schools of interest and possible level fit.</span></div>
+          <div class="panel-row"><strong>Plan</strong><span>Current outreach, follow-ups, camps, and next steps.</span></div>
+        </div>
+      </div>
+
+      <form class="intake-form readiness-form" action="#" method="post" data-readiness-form>
+        <input name="leadId" type="hidden" data-lead-id />
+
+        <div class="form-grid">
+          <label>
+            Athlete Grade
+            <select name="athleteGrade" required>
+              <option value="">Select grade</option>
+              <option>Freshman</option>
+              <option>Sophomore</option>
+              <option>Junior</option>
+              <option>Senior</option>
+              <option>8th Grade</option>
+              <option>Other</option>
+            </select>
+          </label>
+
+          <label>
+            High School
+            <input name="highSchool" type="text" placeholder="Kennedy High School" required />
+          </label>
+
+          <label>
+            Primary Position
+            <input name="position" type="text" placeholder="QB, WR, LB, OL, etc." required />
+          </label>
+
+          <label>
+            Height
+            <input name="height" type="text" placeholder="6'1&quot;" />
+          </label>
+
+          <label>
+            Weight
+            <input name="weight" type="text" placeholder="185" />
+          </label>
+
+          <label>
+            GPA
+            <input name="gpa" type="text" placeholder="3.4 or Not sure" />
+          </label>
+
+          <label class="full">
+            Hudl / Highlight Film Link
+            <input name="hudlLink" type="url" placeholder="https://www.hudl.com/..." />
+          </label>
+
+          <label class="full">
+            X / Twitter Recruiting Account
+            <input name="xAccount" type="url" placeholder="https://x.com/..." />
+          </label>
+
+          <label class="full">
+            Schools of Interest
+            <textarea name="schoolsOfInterest" placeholder="List dream schools, realistic schools, schools that have shown interest, or write Not sure."></textarea>
+          </label>
+
+          <label class="full">
+            Current Coach Outreach
+            <textarea name="coachOutreachStatus" placeholder="Who has been contacted? Who responded? What follow-up has happened? If none yet, say that."></textarea>
+          </label>
+
+          <label class="full">
+            Camps, Visits, or Exposure Events
+            <textarea name="campsOrVisits" placeholder="List past camps, upcoming camps, visits, showcases, or write Not sure."></textarea>
+          </label>
+
+          <label class="full">
+            Biggest Recruiting Concern Right Now
+            <textarea name="biggestConcern" placeholder="Example: We do not know what level to target, what to send coaches, or how to follow up." required></textarea>
+          </label>
+
+          <label class="full">
+            Anything Else We Should Know?
+            <textarea name="additionalContext" placeholder="Optional: injuries, transfer plans, academic concerns, timing, coach conversations, or family questions."></textarea>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button class="button button-primary" type="submit">Submit Readiness Check</button>
+          <p>This does not guarantee offers, scholarships, or coach responses. It helps us understand the starting point.</p>
+        </div>
+
+        <output class="form-result" data-readiness-result hidden></output>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <strong>PlayBoard</strong>
+      <p>Recruiting plans. Athlete accountability. Parent updates.</p>
+    </div>
+    <nav>
+      <a href="./#main">Home</a>
+      <a href="./#intake">Get info</a>
+    </nav>
+  </footer>
+
+  <script src="./readiness-check.js"></script>
+</body>
+</html>
