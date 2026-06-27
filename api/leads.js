@@ -61,14 +61,80 @@ function buildReadinessCheckUrl(req, leadId) {
   return `${getBaseUrl(req)}/readiness-check.html?lead=${encodeURIComponent(leadId)}`;
 }
 
-function buildFirstEmail({ athleteFirstName, readinessCheckUrl }) {
+function limitEmailText(value, maxLength = 600) {
+  const cleanValue = cleanText(value);
+
+  if (cleanValue.length <= maxLength) {
+    return cleanValue;
+  }
+
+  return `${cleanValue.slice(0, maxLength - 3)}...`;
+}
+
+function buildQuestionContext({ athleteName, biggestQuestion }) {
+  const question = limitEmailText(biggestQuestion);
+
+  if (!question) {
+    return {
+      text: `Even if you are not sure what to ask yet, that is okay.
+
+Most families know recruiting matters, but they do not know where to start. The Readiness Check gives us the starting point so we can see what is clear, what is missing, and what needs attention first.`,
+      html: `
+        <tr>
+          <td style="padding:0 28px 8px 28px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#090b0f; border:1px solid rgba(113,246,251,0.28); border-radius:18px;">
+              <tr>
+                <td style="padding:20px;">
+                  <div style="color:#71f6fb; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px;">Where To Start</div>
+                  <p style="margin:0 0 12px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">Even if you are not sure what to ask yet, that is okay.</p>
+                  <p style="margin:0; color:#b5bec8; font-size:15px; line-height:24px;">Most families know recruiting matters, but they do not know where to start. The Readiness Check gives us the starting point so we can see what is clear, what is missing, and what needs attention first.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      `
+    };
+  }
+
+  const safeQuestion = escapeHtml(question);
+  const safeAthleteName = escapeHtml(athleteName);
+
+  return {
+    text: `You mentioned this question:
+
+"${question}"
+
+That is the right kind of question to ask. Recruiting gets hard when families are trying to make decisions with partial information. The Readiness Check gives us the details we need to understand ${athleteName}'s film, academics, outreach, school list, and timing before pointing you toward the next step.`,
+    html: `
+      <tr>
+        <td style="padding:0 28px 8px 28px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#090b0f; border:1px solid rgba(113,246,251,0.28); border-radius:18px;">
+            <tr>
+              <td style="padding:20px;">
+                <div style="color:#71f6fb; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px;">What You Shared</div>
+                <p style="margin:0 0 14px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">“${safeQuestion}”</p>
+                <p style="margin:0; color:#b5bec8; font-size:15px; line-height:24px;">That is the right kind of question to ask. Recruiting gets hard when families are trying to make decisions with partial information. The Readiness Check gives us the details we need to understand ${safeAthleteName}'s film, academics, outreach, school list, and timing before pointing you toward the next step.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `
+  };
+}
+
+function buildFirstEmail({ athleteFirstName, readinessCheckUrl, biggestQuestion }) {
   const athleteName = athleteFirstName || "your athlete";
   const safeAthleteName = escapeHtml(athleteName);
   const safeReadinessCheckUrl = escapeHtml(readinessCheckUrl);
+  const questionContext = buildQuestionContext({ athleteName, biggestQuestion });
 
   const text = `Hi,
 
 Thanks for reaching out about PlayBoard for ${athleteName}.
+
+${questionContext.text}
 
 Most families are not short on effort.
 
@@ -175,8 +241,10 @@ Recruiting is not a hope. It is a plan.
                         </td>
                       </tr>
 
+                      ${questionContext.html}
+
                       <tr>
-                        <td style="padding:0 28px 8px 28px;">
+                        <td style="padding:8px 28px 8px 28px;">
                           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#090b0f; border:1px solid rgba(113,246,251,0.28); border-radius:18px;">
                             <tr>
                               <td style="padding:20px 20px 18px 20px;">
@@ -435,7 +503,8 @@ module.exports = async function handler(req, res) {
       try {
         const email = buildFirstEmail({
           athleteFirstName,
-          readinessCheckUrl: finalReadinessCheckUrl
+          readinessCheckUrl: finalReadinessCheckUrl,
+          biggestQuestion
         });
 
         const emailPayload = {
