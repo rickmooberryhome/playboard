@@ -1,0 +1,117 @@
+.readiness-page .site-header {
+  position: relative;
+}
+
+.readiness-hero {
+  padding-bottom: 2rem;
+}
+
+.readiness-hero h1 {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.readiness-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(340px, 1fr);
+  gap: 2rem;
+  align-items: start;
+  padding-top: 2rem;
+}
+
+.readiness-copy {
+  position: sticky;
+  top: 1.25rem;
+}
+
+.readiness-panel {
+  margin-top: 1.5rem;
+}
+
+.readiness-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.readiness-form label.full {
+  grid-column: 1 / -1;
+}
+
+.readiness-form input[type="text"],
+.readiness-form input[type="email"],
+.readiness-form input[type="url"],
+.readiness-form select,
+.readiness-form textarea {
+  width: 100%;
+  margin-top: 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.02)),
+    rgba(0, 0, 0, 0.58);
+  color: var(--pb-white);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.readiness-form input[type="text"],
+.readiness-form input[type="email"],
+.readiness-form input[type="url"],
+.readiness-form select {
+  min-height: 3.15rem;
+  padding: 0.8rem 0.95rem;
+}
+
+.readiness-form textarea {
+  min-height: 7rem;
+  padding: 0.95rem;
+  resize: vertical;
+}
+
+.readiness-form select option {
+  color: #111;
+}
+
+.readiness-form input::placeholder,
+.readiness-form textarea::placeholder {
+  color: rgba(230, 235, 240, 0.46);
+}
+
+.readiness-form input:focus,
+.readiness-form select:focus,
+.readiness-form textarea:focus {
+  outline: none;
+  border-color: rgba(113, 246, 251, 0.9);
+  box-shadow:
+    0 0 0 3px rgba(113, 246, 251, 0.15),
+    0 0 32px rgba(113, 246, 251, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.form-result {
+  display: block;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(113, 246, 251, 0.32);
+  border-radius: 16px;
+  color: var(--pb-soft);
+  background: rgba(0, 0, 0, 0.34);
+  white-space: pre-wrap;
+}
+
+@media (max-width: 920px) {
+  .readiness-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .readiness-copy {
+    position: static;
+  }
+}
+
+@media (max-width: 620px) {
+  .readiness-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
