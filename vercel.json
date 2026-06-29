@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/send-ready-lead-emails",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
