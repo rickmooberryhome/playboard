@@ -69,54 +69,44 @@ function limitEmailText(value, maxLength = 600) {
 
 function buildQuestionContext(lead) {
   const question = limitEmailText(lead.biggest_question);
-  const context = limitEmailText(lead.first_email_question_context, 520);
 
-  if (question && context) {
-    return {
-      label: "What You Asked",
-      quote: question,
-      text: context
-    };
+  if (!question) {
+    return null;
   }
+
+  const context = limitEmailText(lead.first_email_question_context, 520);
 
   if (context) {
     return {
-      label: "Where To Start",
-      quote: null,
-      text: context
-    };
-  }
-
-  if (question) {
-    return {
       label: "What You Asked",
       quote: question,
-      text: "That is the right kind of question to ask. Recruiting gets hard when families are trying to make decisions with partial information. The Readiness Check gives us the starting point so the next step is clearer."
+      text: context
     };
   }
 
   return {
-    label: "Where To Start",
-    quote: null,
-    text: "Even if you are not sure what to ask yet, that is okay. Most families know recruiting matters, but they do not know where to start. The Readiness Check gives us the starting point so we can see what is clear, what is missing, and what needs attention first."
+    label: "What You Asked",
+    quote: question,
+    text: "That is the right kind of question to ask. Recruiting gets hard when families are trying to make decisions with partial information. The Readiness Check gives us the starting point so the next step is clearer."
   };
 }
 
 function buildQuestionContextText(questionContext) {
-  if (questionContext.quote) {
-    return `You mentioned this question:\n\n"${questionContext.quote}"\n\n${questionContext.text}`;
+  if (!questionContext) {
+    return "";
   }
 
-  return questionContext.text;
+  return `You mentioned this question:\n\n"${questionContext.quote}"\n\n${questionContext.text}`;
 }
 
 function buildQuestionContextHtml(questionContext) {
+  if (!questionContext) {
+    return "";
+  }
+
   const safeLabel = escapeHtml(questionContext.label || "What You Asked");
   const safeText = escapeHtml(questionContext.text);
-  const safeQuote = questionContext.quote ? escapeHtml(questionContext.quote) : "";
-  const quoteHtml = safeQuote
-    ? `<p style="margin:0 0 14px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">&ldquo;${safeQuote}&rdquo;</p>`
-    : `<p style="margin:0 0 12px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">Even if you are not sure what to ask yet, that is okay.</p>`;
+  const safeQuote = escapeHtml(questionContext.quote);
 
   return `
     <tr>
@@ -125,7 +115,7 @@ function buildQuestionContextHtml(questionContext) {
           <tr>
             <td style="padding:20px;">
               <div style="color:#71f6fb; font-size:11px; line-height:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px;">${safeLabel}</div>
-              ${quoteHtml}
+              <p style="margin:0 0 14px 0; color:#ffffff; font-size:17px; line-height:26px; font-weight:800;">&ldquo;${safeQuote}&rdquo;</p>
               <p style="margin:0; color:#b5bec8; font-size:15px; line-height:24px;">${safeText}</p>
             </td>
           </tr>
@@ -142,13 +132,12 @@ function buildFirstEmail(lead) {
   const safeReadinessCheckUrl = escapeHtml(readinessCheckUrl);
   const questionContext = buildQuestionContext(lead);
   const questionContextText = buildQuestionContextText(questionContext);
+  const questionContextTextBlock = questionContextText ? `\n\n${questionContextText}` : "";
   const questionContextHtml = buildQuestionContextHtml(questionContext);
 
   const text = `Hi,
 
-Thanks for reaching out about PlayBoard for ${athleteName}.
-
-${questionContextText}
+Thanks for reaching out about PlayBoard for ${athleteName}.${questionContextTextBlock}
 
 Most families are not short on effort.
 
