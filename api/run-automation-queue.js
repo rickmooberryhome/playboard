@@ -9,8 +9,16 @@ function clampBatchLimit(value) {
   return Math.min(parsed, 50);
 }
 
-async function fetchDueQueueItems(supabase) {
-  const { data, error } = await supabase
+function clean(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getTargetLeadId(req) {
+  return clean(req?.query?.leadId || req?.body?.leadId || req?.query?.testLeadId || req?.body?.testLeadId);
+}
+
+async function fetchDueQueueItems(supabase, targetLeadId = "") {
+  let query = supabase
     .from("automation_queue")
     .select("id, lead_id, rule_key, payload, attempts, max_attempts, run_after, priority")
     .eq("status", "pending")
@@ -18,6 +26,12 @@ async function fetchDueQueueItems(supabase) {
     .order("priority", { ascending: true })
     .order("run_after", { ascending: true })
     .limit(batchLimit);
+
+  if (targetLeadId) {
+    query = query.eq("lead_id", targetLeadId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw new Error(`Automation queue query failed: ${error.message}`);
   return data || [];
@@ -46,8 +60,9 @@ async function runWorkflow(req) {
     throw new Error("Supabase is not configured for automation.");
   }
 
-  const dueItems = await fetchDueQueueItems(supabase);
-  const result = { checked: dueItems.length, processed: 0, completed: 0, skipped: 0, failed: 0, claimedByOtherWorker: 0, errors: [] };
+  const targetLeadId = getTargetLeadId(req);
+  const dueItems = await fetchDueQueueItems(supabase, targetLeadId);
+  const result = { checked: dueItems.length, processed: 0, completed: 0, skipped: 0, failed: 0, claimedByOtherWorker: 0, targetLeadId: targetLeadId || null, errors: [] };
 
   for (const queueItem of dueItems) {
     try {
@@ -87,3 +102,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.runWorkflow = runWorkflow;
+module.exports.fetchDueQueueItems = fetchDueQueueItems;
