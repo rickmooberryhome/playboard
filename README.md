@@ -39,6 +39,19 @@ Phase 1 adds the event-driven funnel foundation for PlayBoard lead tracking:
 
 The matching Supabase migration is in `supabase/migrations/20260629_phase1_funnel_foundation.sql`.
 
+## Phase 2 automation engine
+
+Phase 2 adds the automation layer that runs on top of the Phase 1 queue:
+
+- Automation queue worker endpoint
+- Reminder engine
+- Opened-but-no-click follow-up
+- Readiness form abandonment recovery
+- Post-readiness follow-up sequence
+- Email sequence tracking records
+- Automation history records
+- Hourly Vercel cron for automation processing
+
 ## Important
 
 This is original PlayBoard content and styling. It does not copy WHOOP assets, images, logos, proprietary content, or exact CSS.
