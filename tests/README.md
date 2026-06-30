@@ -12,56 +12,27 @@ These tests use free tooling only:
 npm run test:syntax
 npm run test:phase1
 npm run test:phase2
+npm run test:phase3
+npm run test:phase4
 npm run test:integration
 npm test
 ```
 
-## What the Phase 1 integration test covers
+## Phase 1
 
-The test creates one uniquely tagged test lead, runs through the Phase 1 funnel foundation, verifies the database state, and then deletes everything it created.
+Covers lead creation, event recording, score rollups, state rollups, email open/click tracking, readiness form tracking, completion, automation queue records, and cleanup.
 
-Covered areas:
+## Phase 2
 
-- Lead creation through `api/leads.js`
-- `LEAD_CREATED` event recording
-- Lead score rollup
-- Lead state and funnel stage rollup
-- Initial automation queue records
-- Email message tracking record
-- Email open tracking through `api/email-open.js`
-- Email click tracking through `api/email-click.js`
-- Readiness form started tracking through `api/track.js`
-- Readiness question answer tracking through `api/track.js`
-- Form session progress
-- Readiness submission through `api/readiness-check.js`
-- Form completion state
-- Form answer rollups
-- Final automation queue records
-- Final lead score band
-- Cleanup verification across all Phase 1 tables
+Covers automation queue worker behavior, reminders, abandonment recovery, skip paths, automation history, email sequence dry-run records, and cleanup.
 
-## What the Phase 2 integration test covers
+## Phase 3
 
-The Phase 2 test uses automation dry-run mode so repeatable tests do not send real emails. It targets only the test lead IDs it creates so it does not process real pending automation records.
+Covers funnel analytics, email analytics, form analytics, drop-off reporting, analytics access key behavior, and cleanup.
 
-Covered areas:
+## Phase 4
 
-- Automation queue worker
-- First-email context generation
-- Send-first-email queue handoff
-- First-email unopened reminder
-- First-email unopened 72-hour duplicate prevention
-- Opened-but-no-click reminder
-- Clicked skip path
-- Readiness form abandonment queueing
-- 30-minute abandonment recovery sequence
-- 24-hour abandonment recovery sequence
-- Completed-form abandonment skip path
-- Post-readiness follow-up sequence
-- Manual review queue event
-- Automation history records for completed and skipped actions
-- Email sequence message records
-- Cleanup verification across all Phase 1 and Phase 2 tables
+Covers AI lead summaries, deterministic fallback mode, engagement predictions, dynamic email generation, AI lead endpoint behavior, AI automation queue rules, dry-run personalized email records, AI events, and cleanup.
 
 ## Cleanup guarantee
 
