@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PlayBoard Analytics</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <a class="brand" href="/">
+      <span class="brand-mark">PB</span>
+      <span class="brand-text">PlayBoard</span>
+    </a>
+    <nav class="site-nav">
+      <a href="/">Home</a>
+      <a href="/readiness-check.html">Readiness Check</a>
+    </nav>
+  </header>
+
+  <main id="main" class="section analytics-page">
+    <div class="section-header">
+      <p class="section-kicker">Phase 3 Analytics</p>
+      <h1>Funnel dashboard</h1>
+      <p>Track the path from lead created to readiness check submitted, then find the biggest drop-offs.</p>
+    </div>
+
+    <form class="analytics-controls" data-analytics-form>
+      <label>
+        Date range
+        <select name="days" data-days-select>
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="60">Last 60 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="365">Last 365 days</option>
+        </select>
+      </label>
+      <label>
+        Analytics key
+        <input name="key" type="password" autocomplete="off" placeholder="Optional" data-key-input />
+      </label>
+      <button class="button button-primary" type="submit">Refresh analytics</button>
+    </form>
+
+    <p class="form-result" data-analytics-status>Loading analytics...</p>
+
+    <section class="analytics-grid" aria-label="Summary metrics">
+      <article class="analytics-card">
+        <span>Leads</span>
+        <strong data-summary="leads">—</strong>
+      </article>
+      <article class="analytics-card">
+        <span>Emails</span>
+        <strong data-summary="emails">—</strong>
+      </article>
+      <article class="analytics-card">
+        <span>Form Sessions</span>
+        <strong data-summary="formSessions">—</strong>
+      </article>
+      <article class="analytics-card">
+        <span>Avg Lead Score</span>
+        <strong data-summary="averageLeadScore">—</strong>
+      </article>
+    </section>
+
+    <section class="analytics-panel">
+      <div class="analytics-panel-header">
+        <div>
+          <p class="panel-label">Funnel</p>
+          <h2>Conversion path</h2>
+        </div>
+      </div>
+      <div class="funnel-list" data-funnel-list></div>
+    </section>
+
+    <section class="analytics-two-column">
+      <article class="analytics-panel">
+        <p class="panel-label">Email Analytics</p>
+        <h2>Email performance</h2>
+        <div class="metric-row">
+          <span>Open Rate</span>
+          <strong data-email="openRate">—</strong>
+        </div>
+        <div class="metric-row">
+          <span>Click Rate</span>
+          <strong data-email="clickRate">—</strong>
+        </div>
+        <div class="metric-row">
+          <span>Sent</span>
+          <strong data-email="sent">—</strong>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Campaign</th><th>Sent</th><th>Open</th><th>Click</th></tr></thead>
+            <tbody data-campaign-table></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="analytics-panel">
+        <p class="panel-label">Form Analytics</p>
+        <h2>Readiness form</h2>
+        <div class="metric-row">
+          <span>Completion Rate</span>
+          <strong data-form="completionRate">—</strong>
+        </div>
+        <div class="metric-row">
+          <span>Abandonment Rate</span>
+          <strong data-form="abandonmentRate">—</strong>
+        </div>
+        <div class="metric-row">
+          <span>Avg Fields Completed</span>
+          <strong data-form="avgFieldsCompleted">—</strong>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Answered</th><th>Rate</th></tr></thead>
+            <tbody data-field-table></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="analytics-two-column">
+      <article class="analytics-panel">
+        <p class="panel-label">Drop-off Reporting</p>
+        <h2>Biggest stage losses</h2>
+        <div class="drop-list" data-drop-list></div>
+      </article>
+
+      <article class="analytics-panel">
+        <p class="panel-label">Form Drop-offs</p>
+        <h2>Weakest fields</h2>
+        <div class="drop-list" data-weak-field-list></div>
+      </article>
+    </section>
+  </main>
+
+  <script src="analytics.js"></script>
+</body>
+</html>
