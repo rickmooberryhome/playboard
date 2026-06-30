@@ -155,6 +155,15 @@ create table if not exists public.automation_history (
 
 create index if not exists automation_history_lead_created_at_idx on public.automation_history (lead_id, created_at desc);
 
+alter table public.lead_events enable row level security;
+alter table public.email_messages enable row level security;
+alter table public.email_events enable row level security;
+alter table public.form_sessions enable row level security;
+alter table public.form_answers enable row level security;
+alter table public.lead_scores enable row level security;
+alter table public.automation_queue enable row level security;
+alter table public.automation_history enable row level security;
+
 create or replace function public.set_updated_at()
 returns trigger as $$
 begin
@@ -162,6 +171,8 @@ begin
   return new;
 end;
 $$ language plpgsql;
+
+revoke execute on function public.set_updated_at() from public, anon, authenticated;
 
 drop trigger if exists set_leads_updated_at on public.leads;
 create trigger set_leads_updated_at before update on public.leads for each row execute function public.set_updated_at();
