@@ -43,7 +43,7 @@ function trackReadinessEvent(eventType, metadata = {}, dedupeSuffix = "") {
 function markReadinessStarted(fieldName = "") {
   if (readinessStarted || !leadId) return;
   readinessStarted = true;
-  trackReadinessEvent("READINESS_FORM_STARTED", { fieldKey: fieldName || null }, formSessionId);
+  trackReadinessEvent("READINESS_FORM_STARTED", { fieldKey: fieldName || null, queueAbandonmentRecovery: true }, formSessionId);
 }
 
 if (readinessForm) {

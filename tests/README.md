@@ -38,9 +38,25 @@ Covered areas:
 - Final lead score band
 - Cleanup verification across all Phase 1 tables
 
+## What the Phase 2 integration test covers
+
+The Phase 2 test uses automation dry-run mode so repeatable tests do not send real emails. It targets only the test lead IDs it creates so it does not process real pending automation records.
+
+Covered areas:
+
+- Automation queue worker
+- First-email unopened reminder
+- Opened-but-no-click reminder
+- Readiness form abandonment recovery
+- Post-readiness follow-up sequence
+- Manual review queue event
+- Automation history records
+- Email sequence message records
+- Cleanup verification across all Phase 1 and Phase 2 tables
+
 ## Cleanup guarantee
 
-The test stores every created lead ID and deletes related records from:
+The tests store every created lead ID and delete related records from:
 
 - `readiness_checks`
 - `automation_history`
@@ -53,4 +69,4 @@ The test stores every created lead ID and deletes related records from:
 - `lead_events`
 - `leads`
 
-After cleanup, it queries each table again and fails if any test data remains.
+After cleanup, each test queries every table again and fails if any test data remains.
