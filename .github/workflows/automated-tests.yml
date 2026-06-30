@@ -11,7 +11,7 @@ on:
 
 jobs:
   automated-tests:
-    name: Phase 1 and Phase 2 automation tests
+    name: Phase 1, Phase 2, and Phase 3 tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,6 +33,9 @@ jobs:
 
       - name: Phase 2 automation integration test with cleanup
         run: npm run test:phase2
+
+      - name: Phase 3 analytics integration test with cleanup
+        run: npm run test:phase3
 
       - name: Full integration suite
         run: npm run test:integration
