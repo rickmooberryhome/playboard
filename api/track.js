@@ -1,4 +1,4 @@
-const { getSupabaseClient, recordLeadEvent } = require("./_funnel");
+const { getSupabaseClient, recordLeadEvent, enqueueAutomation, addHours } = require("./_funnel");
 
 function cleanText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -71,6 +71,26 @@ async function saveQuestionAnswer(supabase, { leadId, formKey, sessionId, fieldK
   }
 }
 
+async function queueAbandonmentRecovery(supabase, { leadId, sessionId }) {
+  await enqueueAutomation(supabase, {
+    leadId,
+    ruleKey: "readiness_abandoned_30m",
+    runAfter: addHours(new Date(), 0.5),
+    priority: 40,
+    payload: { formKey: "readiness_check", sessionId },
+    dedupeKey: `${leadId}:readiness_abandoned_30m:${sessionId || "default"}`
+  });
+
+  await enqueueAutomation(supabase, {
+    leadId,
+    ruleKey: "readiness_abandoned_24h",
+    runAfter: addHours(new Date(), 24),
+    priority: 80,
+    payload: { formKey: "readiness_check", sessionId },
+    dedupeKey: `${leadId}:readiness_abandoned_24h:${sessionId || "default"}`
+  });
+}
+
 async function handleFormTracking(supabase, { leadId, eventType, metadata, sessionId }) {
   const formKey = cleanText(metadata.formKey) || "readiness_check";
 
@@ -85,6 +105,10 @@ async function handleFormTracking(supabase, { leadId, eventType, metadata, sessi
     });
 
     await supabase.from("leads").update({ readiness_started_at: new Date().toISOString() }).eq("id", leadId).is("readiness_started_at", null);
+
+    if (metadata.queueAbandonmentRecovery !== false) {
+      await queueAbandonmentRecovery(supabase, { leadId, sessionId });
+    }
   }
 
   if (eventType === "READINESS_QUESTION_ANSWERED") {
