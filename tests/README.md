@@ -10,6 +10,8 @@ These tests use free tooling only:
 
 ```bash
 npm run test:syntax
+npm run test:phase1
+npm run test:phase2
 npm run test:integration
 npm test
 ```
@@ -45,12 +47,19 @@ The Phase 2 test uses automation dry-run mode so repeatable tests do not send re
 Covered areas:
 
 - Automation queue worker
+- First-email context generation
+- Send-first-email queue handoff
 - First-email unopened reminder
+- First-email unopened 72-hour duplicate prevention
 - Opened-but-no-click reminder
-- Readiness form abandonment recovery
+- Clicked skip path
+- Readiness form abandonment queueing
+- 30-minute abandonment recovery sequence
+- 24-hour abandonment recovery sequence
+- Completed-form abandonment skip path
 - Post-readiness follow-up sequence
 - Manual review queue event
-- Automation history records
+- Automation history records for completed and skipped actions
 - Email sequence message records
 - Cleanup verification across all Phase 1 and Phase 2 tables
 
