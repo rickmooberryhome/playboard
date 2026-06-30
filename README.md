@@ -25,6 +25,20 @@ Original PlayBoard homepage concept for high school football recruiting support.
 - Cyan: `#71F6FB`
 - Purple: `#CF4ADD`
 
+## Phase 1 funnel foundation
+
+Phase 1 adds the event-driven funnel foundation for PlayBoard lead tracking:
+
+- Lead event history
+- Lead state rollups
+- Lead scoring
+- Automation queue
+- Email open and click tracking endpoints
+- Readiness form start, answer, and completion tracking
+- Question-level form analytics data
+
+The matching Supabase migration is in `supabase/migrations/20260629_phase1_funnel_foundation.sql`.
+
 ## Important
 
 This is original PlayBoard content and styling. It does not copy WHOOP assets, images, logos, proprietary content, or exact CSS.
