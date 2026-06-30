@@ -4,9 +4,65 @@ const leadIdField = document.querySelector("[data-lead-id]");
 
 const params = new URLSearchParams(window.location.search);
 const leadId = params.get("lead") || "";
+const formSessionId = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+let readinessStarted = false;
+const answeredFields = new Set();
 
-if (leadIdField) {
-  leadIdField.value = leadId;
+if (leadIdField) leadIdField.value = leadId;
+
+function trackReadinessEvent(eventType, metadata = {}, dedupeSuffix = "") {
+  if (!leadId) return;
+
+  const payload = {
+    leadId,
+    eventType,
+    sessionId: formSessionId,
+    idempotencyKey: dedupeSuffix ? `${leadId}:${eventType}:${dedupeSuffix}` : undefined,
+    metadata: {
+      formKey: "readiness_check",
+      page: "readiness-check",
+      ...metadata
+    }
+  };
+
+  const body = JSON.stringify(payload);
+
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon("/api/track", new Blob([body], { type: "application/json" }));
+    return;
+  }
+
+  fetch("/api/track", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+    keepalive: true
+  }).catch(() => {});
+}
+
+function markReadinessStarted(fieldName = "") {
+  if (readinessStarted || !leadId) return;
+  readinessStarted = true;
+  trackReadinessEvent("READINESS_FORM_STARTED", { fieldKey: fieldName || null }, formSessionId);
+}
+
+if (readinessForm) {
+  readinessForm.addEventListener("focusin", (event) => {
+    markReadinessStarted(event.target?.name || "");
+  });
+
+  readinessForm.addEventListener("change", (event) => {
+    const field = event.target?.name || "";
+    if (!field || field === "leadId" || answeredFields.has(field)) return;
+
+    answeredFields.add(field);
+    markReadinessStarted(field);
+
+    trackReadinessEvent("READINESS_QUESTION_ANSWERED", {
+      fieldKey: field,
+      answerValue: String(event.target?.value || "").trim().slice(0, 500)
+    }, `${formSessionId}:${field}`);
+  });
 }
 
 if (readinessForm && readinessResult && !leadId) {
@@ -24,15 +80,16 @@ if (readinessForm && readinessResult) {
       return;
     }
 
-    if (!readinessForm.reportValidity()) {
-      return;
-    }
+    if (!readinessForm.reportValidity()) return;
+
+    markReadinessStarted("submit");
 
     const submitButton = readinessForm.querySelector('button[type="submit"]');
     const data = new FormData(readinessForm);
 
     const payload = {
       leadId: String(data.get("leadId") || "").trim(),
+      formSessionId,
       athleteGrade: String(data.get("athleteGrade") || "").trim(),
       highSchool: String(data.get("highSchool") || "").trim(),
       position: String(data.get("position") || "").trim(),
@@ -59,30 +116,18 @@ if (readinessForm && readinessResult) {
     try {
       const response = await fetch("/api/readiness-check", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
       const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || "Something went wrong.");
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Something went wrong.");
-      }
-
-      readinessResult.textContent =
-        result.message ||
-        "Got it. We have the readiness check. We will review the information and follow up with the next step.";
-
+      readinessResult.textContent = result.message || "Got it. We have the readiness check. We will review the information and follow up with the next step.";
       readinessForm.reset();
-      if (leadIdField) {
-        leadIdField.value = leadId;
-      }
+      if (leadIdField) leadIdField.value = leadId;
     } catch (error) {
-      readinessResult.textContent =
-        error.message ||
-        "Something went wrong saving the readiness check. Please try again.";
+      readinessResult.textContent = error.message || "Something went wrong saving the readiness check. Please try again.";
     } finally {
       if (submitButton) {
         submitButton.disabled = false;

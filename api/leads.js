@@ -1,26 +1,17 @@
 const { createClient } = require("@supabase/supabase-js");
+const { recordLeadEvent, enqueueAutomation, addHours } = require("./_funnel");
 
 const rawSupabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const configuredSiteUrl = process.env.PLAYBOARD_SITE_URL;
 
 function normalizeSupabaseUrl(value) {
-  if (!value) {
-    return "";
-  }
-
-  try {
-    const parsedUrl = new URL(value.trim());
-    return parsedUrl.origin;
-  } catch (error) {
-    return "";
-  }
+  if (!value) return "";
+  try { return new URL(value.trim()).origin; } catch (error) { return ""; }
 }
 
 const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
-const supabase = supabaseUrl && supabaseSecretKey
-  ? createClient(supabaseUrl, supabaseSecretKey)
-  : null;
+const supabase = supabaseUrl && supabaseSecretKey ? createClient(supabaseUrl, supabaseSecretKey) : null;
 
 function cleanText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -32,15 +23,9 @@ function isValidEmail(value) {
 
 function getBaseUrl(req) {
   const siteUrl = cleanText(configuredSiteUrl);
-
-  if (siteUrl) {
-    return siteUrl.replace(/\/$/, "");
-  }
-
+  if (siteUrl) return siteUrl.replace(/\/$/, "");
   const protocol = req.headers["x-forwarded-proto"] || "https";
-  const host = req.headers.host;
-
-  return `${protocol}://${host}`;
+  return `${protocol}://${req.headers.host}`;
 }
 
 function buildReadinessCheckUrl(req, leadId) {
@@ -78,33 +63,42 @@ function getInitialEmailQueueFields(biggestQuestion) {
   };
 }
 
+async function seedPhaseOneAutomations({ leadId, biggestQuestion, readinessCheckUrl }) {
+  const now = new Date();
+  const hasQuestion = Boolean(cleanText(biggestQuestion));
+
+  await enqueueAutomation(supabase, {
+    leadId,
+    ruleKey: hasQuestion ? "generate_first_email_context" : "send_first_email",
+    runAfter: now.toISOString(),
+    priority: 10,
+    payload: { biggestQuestion: biggestQuestion || null, readinessCheckUrl },
+    dedupeKey: `${leadId}:${hasQuestion ? "generate_first_email_context" : "send_first_email"}`
+  });
+
+  await enqueueAutomation(supabase, {
+    leadId,
+    ruleKey: "first_email_unopened_24h",
+    runAfter: addHours(now, 24),
+    priority: 100,
+    payload: { readinessCheckUrl },
+    dedupeKey: `${leadId}:first_email_unopened_24h`
+  });
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({
-      success: false,
-      code: "METHOD_NOT_ALLOWED",
-      message: "Method not allowed"
-    });
+    return res.status(405).json({ success: false, code: "METHOD_NOT_ALLOWED", message: "Method not allowed" });
   }
 
   if (!rawSupabaseUrl || !supabaseSecretKey) {
     console.error("Missing Supabase environment variables.");
-
-    return res.status(500).json({
-      success: false,
-      code: "SUPABASE_CONFIG_MISSING",
-      message: "The lead system is not configured yet. Check SUPABASE_URL and SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in Vercel."
-    });
+    return res.status(500).json({ success: false, code: "SUPABASE_CONFIG_MISSING", message: "The lead system is not configured yet. Check SUPABASE_URL and SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in Vercel." });
   }
 
   if (!supabaseUrl || !supabase) {
     console.error("Invalid Supabase URL.");
-
-    return res.status(500).json({
-      success: false,
-      code: "SUPABASE_URL_INVALID",
-      message: "The Supabase project URL is invalid. Use the project URL format: https://YOUR-PROJECT-REF.supabase.co"
-    });
+    return res.status(500).json({ success: false, code: "SUPABASE_URL_INVALID", message: "The Supabase project URL is invalid. Use the project URL format: https://YOUR-PROJECT-REF.supabase.co" });
   }
 
   try {
@@ -114,19 +108,11 @@ module.exports = async function handler(req, res) {
     const biggestQuestion = cleanText(req.body.biggestQuestion);
 
     if (!athleteFirstName || !athleteLastName || !parentEmail) {
-      return res.status(400).json({
-        success: false,
-        code: "MISSING_REQUIRED_FIELDS",
-        message: "Please enter the athlete's first name, last name, and email."
-      });
+      return res.status(400).json({ success: false, code: "MISSING_REQUIRED_FIELDS", message: "Please enter the athlete's first name, last name, and email." });
     }
 
     if (!isValidEmail(parentEmail)) {
-      return res.status(400).json({
-        success: false,
-        code: "INVALID_EMAIL",
-        message: "Please enter a valid email address."
-      });
+      return res.status(400).json({ success: false, code: "INVALID_EMAIL", message: "Please enter a valid email address." });
     }
 
     const { data, error } = await supabase
@@ -137,7 +123,9 @@ module.exports = async function handler(req, res) {
         parent_email: parentEmail.toLowerCase(),
         biggest_question: biggestQuestion || null,
         source: "landing_page",
-        funnel_stage: "simple_lead",
+        funnel_stage: "lead_created",
+        current_state: "lead_created",
+        lead_score: 0,
         user_agent: req.headers["user-agent"] || null,
         referrer: req.headers.referer || null
       })
@@ -146,7 +134,6 @@ module.exports = async function handler(req, res) {
 
     if (error) {
       console.error("Supabase insert error:", error);
-
       return res.status(500).json({
         success: false,
         code: "SUPABASE_INSERT_FAILED",
@@ -162,15 +149,21 @@ module.exports = async function handler(req, res) {
 
     const { error: updateError } = await supabase
       .from("leads")
-      .update({
-        readiness_check_url: readinessCheckUrl,
-        ...emailQueueFields
-      })
+      .update({ readiness_check_url: readinessCheckUrl, ...emailQueueFields })
       .eq("id", data.id);
 
-    if (updateError) {
-      console.error("Lead email queue update error:", updateError);
-    }
+    if (updateError) console.error("Lead email queue update error:", updateError);
+
+    await recordLeadEvent(supabase, {
+      leadId: data.id,
+      eventType: "LEAD_CREATED",
+      source: "landing_page",
+      metadata: { hasBiggestQuestion: Boolean(biggestQuestion), readinessCheckUrl },
+      req,
+      idempotencyKey: `lead-created:${data.id}`
+    });
+
+    await seedPhaseOneAutomations({ leadId: data.id, biggestQuestion, readinessCheckUrl });
 
     return res.status(200).json({
       success: true,
@@ -180,11 +173,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (error) {
     console.error("Lead API error:", error);
-
-    return res.status(500).json({
-      success: false,
-      code: "LEAD_API_ERROR",
-      message: "Something went wrong. Please try again."
-    });
+    return res.status(500).json({ success: false, code: "LEAD_API_ERROR", message: "Something went wrong. Please try again." });
   }
 };
