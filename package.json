@@ -5,7 +5,7 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "test:integration": "node --test tests/*.integration.test.js",
-    "test:syntax": "node --check api/_funnel.js && node --check api/leads.js && node --check api/track.js && node --check api/email-open.js && node --check api/email-click.js && node --check api/readiness-check.js && node --check readiness-check.js"
+    "test:syntax": "node --check api/_funnel.js && node --check api/leads.js && node --check api/track.js && node --check api/email-open.js && node --check api/email-click.js && node --check api/readiness-check.js && node --check api/run-automation-queue.js && node --check readiness-check.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.48.0",
