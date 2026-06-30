@@ -144,7 +144,7 @@ async function assertNoTestDataLeft(supabase, leadIds) {
   for (const [table, column] of checks) {
     const { count, error } = await supabase
       .from(table)
-      .select("id", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true })
       .in(column, ids);
 
     if (error && error.code !== "42P01") {
@@ -366,7 +366,7 @@ test("Phase 1 funnel tracks lead, email, form progress, completion, scoring, que
 
     const { count: answerCount, error: answerCountError } = await supabase
       .from("form_answers")
-      .select("id", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true })
       .eq("lead_id", leadId)
       .eq("form_key", "readiness_check");
 
