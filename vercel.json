@@ -3,6 +3,10 @@
     {
       "path": "/api/send-ready-lead-emails",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/run-automation-queue",
+      "schedule": "0 * * * *"
     }
   ]
 }
