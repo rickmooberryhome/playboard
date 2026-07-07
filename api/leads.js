@@ -66,13 +66,17 @@ function getInitialEmailQueueFields(biggestQuestion) {
 async function seedPhaseOneAutomations({ leadId, biggestQuestion, readinessCheckUrl }) {
   const hasQuestion = Boolean(cleanText(biggestQuestion));
 
+  if (hasQuestion) {
+    return;
+  }
+
   await enqueueAutomation(supabase, {
     leadId,
-    ruleKey: hasQuestion ? "generate_first_email_context" : "send_first_email",
+    ruleKey: "send_first_email",
     runAfter: new Date().toISOString(),
     priority: 10,
-    payload: { biggestQuestion: biggestQuestion || null, readinessCheckUrl },
-    dedupeKey: `${leadId}:${hasQuestion ? "generate_first_email_context" : "send_first_email"}`
+    payload: { biggestQuestion: null, readinessCheckUrl },
+    dedupeKey: `${leadId}:send_first_email`
   });
 }
 
