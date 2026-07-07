@@ -13,6 +13,12 @@ function clean(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function isAuthorized(req) {
+  const cronSecret = clean(process.env.CRON_SECRET);
+  if (!cronSecret) return true;
+  return clean(req?.headers?.authorization) === `Bearer ${cronSecret}`;
+}
+
 function getTargetLeadId(req) {
   return clean(req?.query?.leadId || req?.body?.leadId || req?.query?.testLeadId || req?.body?.testLeadId);
 }
@@ -92,6 +98,10 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ success: false, code: "METHOD_NOT_ALLOWED" });
   }
 
+  if (!isAuthorized(req)) {
+    return res.status(401).json({ success: false, code: "UNAUTHORIZED" });
+  }
+
   try {
     const result = await runWorkflow(req);
     return res.status(200).json({ success: true, ...result });
@@ -103,3 +113,4 @@ module.exports = async function handler(req, res) {
 
 module.exports.runWorkflow = runWorkflow;
 module.exports.fetchDueQueueItems = fetchDueQueueItems;
+module.exports.isAuthorized = isAuthorized;
