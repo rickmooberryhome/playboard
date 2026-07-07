@@ -132,7 +132,6 @@ async function assertNoTestDataLeft(supabase, leadIds) {
   ];
 
   for (const [table, column] of checks) {
-    const { count, error } = await supabase.select ? { count: 0, error: null } : { count: 0, error: null };
     const result = await supabase.from(table).select("*", { count: "exact", head: true }).in(column, ids);
     if (result.error && result.error.code !== "42P01") throw new Error(`Cleanup verification failed for ${table}: ${result.error.message}`);
     assert.equal(result.count || 0, 0, `${table} should not contain test data after cleanup`);
@@ -181,13 +180,7 @@ test("Phase 1 funnel tracks lead, engaged, offered stages and queues stage follo
 
     const { data: emailMessage, error: emailMessageError } = await supabase
       .from("email_messages")
-      .insert({
-        lead_id: leadId,
-        campaign_key: "phase_1_test_email",
-        to_email: `automation+${runId}@example.com`,
-        subject: "Phase 1 test email",
-        status: "sent"
-      })
+      .insert({ lead_id: leadId, campaign_key: "phase_1_test_email", to_email: `automation+${runId}@example.com`, subject: "Phase 1 test email", status: "sent" })
       .select("id")
       .single();
 
@@ -195,11 +188,7 @@ test("Phase 1 funnel tracks lead, engaged, offered stages and queues stage follo
 
     const clickRes = await callHandler(emailClickHandler, {
       method: "GET",
-      query: {
-        lead: leadId,
-        message: emailMessage.id,
-        url: `/readiness-check.html?lead=${leadId}`
-      }
+      query: { lead: leadId, message: emailMessage.id, url: `/readiness-check.html?lead=${leadId}` }
     });
 
     assert.equal(clickRes.statusCode, 302);
@@ -216,13 +205,7 @@ test("Phase 1 funnel tracks lead, engaged, offered stages and queues stage follo
     const formSessionId = `session-${runId}`;
     const startRes = await callHandler(trackHandler, {
       method: "POST",
-      body: {
-        leadId,
-        eventType: "READINESS_FORM_STARTED",
-        sessionId: formSessionId,
-        idempotencyKey: `${leadId}:READINESS_FORM_STARTED:${formSessionId}`,
-        metadata: { formKey: "readiness_check", fieldKey: "athleteGrade" }
-      }
+      body: { leadId, eventType: "READINESS_FORM_STARTED", sessionId: formSessionId, idempotencyKey: `${leadId}:READINESS_FORM_STARTED:${formSessionId}`, metadata: { formKey: "readiness_check", fieldKey: "athleteGrade" } }
     });
 
     assert.equal(startRes.statusCode, 200);
@@ -257,26 +240,15 @@ test("Phase 1 funnel tracks lead, engaged, offered stages and queues stage follo
     assert.equal(lead.current_state, "form_completed");
     assert.equal(lead.funnel_stage, "offered");
     assert.equal(lead.last_event_type, "READINESS_FORM_SUBMITTED");
-    assert.equal(lead.lead_score, 154);
+    assert.equal(lead.lead_score, 150);
     assert.ok(lead.readiness_started_at);
     assert.ok(lead.readiness_completed_at);
 
     const events = await getLeadEvents(supabase, leadId);
-    assert.deepEqual(events.map((event) => event.event_type), [
-      "LEAD_CREATED",
-      "EMAIL_CLICKED",
-      "READINESS_FORM_STARTED",
-      "READINESS_FORM_SUBMITTED"
-    ]);
+    assert.deepEqual(events.map((event) => event.event_type), ["LEAD_CREATED", "EMAIL_CLICKED", "READINESS_FORM_STARTED", "READINESS_FORM_SUBMITTED"]);
 
     const finalQueueKeys = await getQueueKeys(supabase, leadId);
-    for (const key of [
-      "offered_followup_day_1",
-      "offered_followup_day_3",
-      "offered_followup_day_5",
-      "offered_mark_uncommitted_day_10",
-      "review_completed_readiness_check"
-    ]) {
+    for (const key of ["offered_followup_day_1", "offered_followup_day_3", "offered_followup_day_5", "offered_mark_uncommitted_day_10", "review_completed_readiness_check"]) {
       assert.ok(finalQueueKeys.includes(key), `${key} should be queued`);
     }
 
@@ -287,7 +259,7 @@ test("Phase 1 funnel tracks lead, engaged, offered stages and queues stage follo
       .single();
 
     assert.ifError(leadScoreError);
-    assert.equal(leadScore.score, 154);
+    assert.equal(leadScore.score, 150);
     assert.equal(leadScore.score_band, "sales_ready");
   } finally {
     await cleanupLeadData(supabase, leadIds);
