@@ -1,5 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
-const { recordLeadEvent, enqueueAutomation, addHours } = require("./_funnel");
+const { recordLeadEvent, enqueueAutomation } = require("./_funnel");
 
 const rawSupabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -64,25 +64,15 @@ function getInitialEmailQueueFields(biggestQuestion) {
 }
 
 async function seedPhaseOneAutomations({ leadId, biggestQuestion, readinessCheckUrl }) {
-  const now = new Date();
   const hasQuestion = Boolean(cleanText(biggestQuestion));
 
   await enqueueAutomation(supabase, {
     leadId,
     ruleKey: hasQuestion ? "generate_first_email_context" : "send_first_email",
-    runAfter: now.toISOString(),
+    runAfter: new Date().toISOString(),
     priority: 10,
     payload: { biggestQuestion: biggestQuestion || null, readinessCheckUrl },
     dedupeKey: `${leadId}:${hasQuestion ? "generate_first_email_context" : "send_first_email"}`
-  });
-
-  await enqueueAutomation(supabase, {
-    leadId,
-    ruleKey: "first_email_unopened_24h",
-    runAfter: addHours(now, 24),
-    priority: 100,
-    payload: { readinessCheckUrl },
-    dedupeKey: `${leadId}:first_email_unopened_24h`
   });
 }
 
@@ -123,7 +113,7 @@ module.exports = async function handler(req, res) {
         parent_email: parentEmail.toLowerCase(),
         biggest_question: biggestQuestion || null,
         source: "landing_page",
-        funnel_stage: "lead_created",
+        funnel_stage: null,
         current_state: "lead_created",
         lead_score: 0,
         user_agent: req.headers["user-agent"] || null,

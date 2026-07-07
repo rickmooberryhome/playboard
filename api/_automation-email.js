@@ -85,7 +85,163 @@ async function buildAiSequenceEmail({ supabase, lead, sequenceKey }) {
   return { email: emailFromGenerated({ generated, campaignKey: sequenceKey }), summary, generated };
 }
 
+function paragraph(value, bold = false) {
+  return `<p style="margin:0 0 14px 0; color:${bold ? "#ffffff" : "#b5bec8"}; font-size:16px; line-height:25px; ${bold ? "font-weight:800;" : ""}">${value}</p>`;
+}
+
+function buildEmail({ campaignKey, subject, eyebrow, headline, paragraphs, actionLabel, fallbackText, targetUrl }) {
+  const bodyHtml = paragraphs.map((item) => paragraph(item.text, item.bold)).join("");
+  return {
+    campaignKey,
+    subject,
+    text: paragraphs.map((item) => item.text.replace(/<[^>]+>/g, "")).join("\n\n") + `\n\n${fallbackText}`,
+    html: buildBaseTemplate({ eyebrow, headline, bodyHtml, actionLabel, fallbackText }),
+    targetUrl
+  };
+}
+
+function buildStageFollowupEmail({ sequenceKey, lead }) {
+  const athleteName = clean(lead.athlete_first_name) || "your athlete";
+  const safeAthleteName = escapeHtml(athleteName);
+  const readinessUrl = clean(lead.readiness_check_url) || "/readiness-check.html";
+  const siteUrl = clean(configuredSiteUrl) || "https://playboardfootball.com";
+
+  const stageEmails = {
+    lead_followup_day_1: buildEmail({
+      campaignKey: sequenceKey,
+      subject: "Next step for the recruiting plan",
+      eyebrow: "PlayBoard Follow-Up",
+      headline: "Start with the next step.",
+      paragraphs: [
+        { text: `I wanted to make sure you saw the next step for <strong style="color:#ffffff;">${safeAthleteName}</strong>.` },
+        { text: "The Readiness Check gives us the starting point: where things stand, what is missing, and what should happen next." },
+        { text: "You do not need perfect answers. Missing information helps us see where the plan needs to begin.", bold: true }
+      ],
+      actionLabel: "Complete the Readiness Check",
+      fallbackText: `Direct link: ${readinessUrl}`,
+      targetUrl: readinessUrl
+    }),
+    lead_followup_day_3: buildEmail({
+      campaignKey: sequenceKey,
+      subject: "Recruiting needs a starting point",
+      eyebrow: "Still Interested?",
+      headline: "Do not guess.",
+      paragraphs: [
+        { text: "Most families are trying to help, but they are working without a clear recruiting baseline." },
+        { text: `For <strong style="color:#ffffff;">${safeAthleteName}</strong>, the Readiness Check helps us see the school fit, outreach, film, academics, and next steps.` },
+        { text: "Once that is done, we can talk about what kind of plan makes sense.", bold: true }
+      ],
+      actionLabel: "Finish the Readiness Check",
+      fallbackText: `Direct link: ${readinessUrl}`,
+      targetUrl: readinessUrl
+    }),
+    lead_followup_day_5: buildEmail({
+      campaignKey: sequenceKey,
+      subject: "Should we keep this open?",
+      eyebrow: "Last Nudge For Now",
+      headline: "Keep moving or pause.",
+      paragraphs: [
+        { text: `I do not want to keep sending reminders if PlayBoard is not the right fit for <strong style="color:#ffffff;">${safeAthleteName}</strong> right now.` },
+        { text: "If you still want help building a recruiting plan, complete the Readiness Check and we will take the next step from there." },
+        { text: "If now is not the right time, no problem. We will close the loop for now.", bold: true }
+      ],
+      actionLabel: "Complete the Check",
+      fallbackText: `Direct link: ${readinessUrl}`,
+      targetUrl: readinessUrl
+    }),
+    engaged_followup_day_1: buildEmail({
+      campaignKey: sequenceKey,
+      subject: "You opened the next step",
+      eyebrow: "Readiness Check",
+      headline: "Finish the baseline.",
+      paragraphs: [
+        { text: `Looks like you made it to the Readiness Check for <strong style="color:#ffffff;">${safeAthleteName}</strong>.` },
+        { text: "That is the right next step. The answers help us understand what is clear, what is missing, and where recruiting effort should go first." },
+        { text: "Write 'not sure' anywhere you need to. That is useful information too.", bold: true }
+      ],
+      actionLabel: "Continue the Check",
+      fallbackText: `Direct link: ${readinessUrl}`,
+      targetUrl: readinessUrl
+    }),
+    engaged_followup_day_3: buildEmail({
+      campaignKey: sequenceKey,
+      subject: "Finish the recruiting baseline",
+      eyebrow: "Still Open",
+      headline: "One step left.",
+      paragraphs: [
+        { text: "The Readiness Check is not about having everything figured out." },
+        { text: `It is about seeing where <strong style="color:#ffffff;">${safeAthleteName}</strong> stands right now so the plan is realistic.` },
+        { text: "A few honest answers are better than waiting for perfect information.", bold: true }
+      ],
+      actionLabel: "Finish the Baseline",
+      fallbackText: `Direct link: ${readinessUrl}`,
+      targetUrl: readinessUrl
+    }),
+    engaged_followup_day_5: buildEmail({
+      campaignKey: sequenceKey,
+      subject: "Do you still want us to review this?",
+      eyebrow: "Decision Point",
+      headline: "Should we keep going?",
+      paragraphs: [
+        { text: `If you still want PlayBoard to review the starting point for <strong style="color:#ffffff;">${safeAthleteName}</strong>, finish the Readiness Check.` },
+        { text: "After that, we can look at what kind of plan makes sense and whether PlayBoard is a fit." },
+        { text: "If now is not the right time, we will stop the reminders for this round.", bold: true }
+      ],
+      actionLabel: "Finish the Check",
+      fallbackText: `Direct link: ${readinessUrl}`,
+      targetUrl: readinessUrl
+    }),
+    offered_followup_day_1: buildEmail({
+      campaignKey: sequenceKey,
+      subject: "We have the readiness check",
+      eyebrow: "Readiness Received",
+      headline: "The baseline is in.",
+      paragraphs: [
+        { text: `Thanks for completing the Readiness Check for <strong style="color:#ffffff;">${safeAthleteName}</strong>.` },
+        { text: "The next step is turning that starting point into a clear recruiting plan." },
+        { text: "We will look at school fit, outreach, film, academics, and the weekly work that needs to happen next.", bold: true }
+      ],
+      actionLabel: "Back to PlayBoard",
+      fallbackText: "You received this because you completed the PlayBoard readiness check.",
+      targetUrl: siteUrl
+    }),
+    offered_followup_day_3: buildEmail({
+      campaignKey: sequenceKey,
+      subject: "Ready to build the plan?",
+      eyebrow: "Next Step",
+      headline: "Turn the baseline into action.",
+      paragraphs: [
+        { text: `The Readiness Check gave us the starting point for <strong style="color:#ffffff;">${safeAthleteName}</strong>.` },
+        { text: "The next move is deciding if you want help turning that into weekly recruiting work." },
+        { text: "PlayBoard is built for athletes who are ready to take ownership, communicate, follow up, and stay accountable.", bold: true }
+      ],
+      actionLabel: "Back to PlayBoard",
+      fallbackText: "You received this because you completed the PlayBoard readiness check.",
+      targetUrl: siteUrl
+    }),
+    offered_followup_day_5: buildEmail({
+      campaignKey: sequenceKey,
+      subject: "Should we close this loop?",
+      eyebrow: "Final Follow-Up",
+      headline: "Keep going or pause.",
+      paragraphs: [
+        { text: `I do not want to keep chasing if now is not the right time for <strong style="color:#ffffff;">${safeAthleteName}</strong>.` },
+        { text: "If you want to keep moving, reply and we can talk through the next step." },
+        { text: "If we do not hear back, we will close this out for now and may send future PlayBoard updates later.", bold: true }
+      ],
+      actionLabel: "Back to PlayBoard",
+      fallbackText: "Reply to this email if you want to keep moving.",
+      targetUrl: siteUrl
+    })
+  };
+
+  return stageEmails[sequenceKey] || null;
+}
+
 function buildSequenceEmail({ sequenceKey, lead }) {
+  const stageEmail = buildStageFollowupEmail({ sequenceKey, lead });
+  if (stageEmail) return stageEmail;
+
   const athleteName = clean(lead.athlete_first_name) || "your athlete";
   const readinessUrl = clean(lead.readiness_check_url) || "/readiness-check.html";
   const safeAthleteName = escapeHtml(athleteName);

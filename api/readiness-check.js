@@ -1,5 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
-const { recordLeadEvent, enqueueAutomation, addHours } = require("./_funnel");
+const { recordLeadEvent, enqueueAutomation } = require("./_funnel");
 
 const rawSupabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -171,10 +171,10 @@ module.exports = async function handler(req, res) {
 
     const { error: updateError } = await supabase
       .from("leads")
-      .update({ funnel_stage: "form_completed", current_state: "form_completed", readiness_completed_at: new Date().toISOString() })
+      .update({ readiness_completed_at: new Date().toISOString() })
       .eq("id", lead.id);
 
-    if (updateError) console.error("Lead funnel update error:", updateError);
+    if (updateError) console.error("Lead readiness update error:", updateError);
 
     await recordLeadEvent(supabase, {
       leadId: lead.id,
@@ -197,15 +197,6 @@ module.exports = async function handler(req, res) {
       priority: 10,
       payload: { readinessCheckId: data.id },
       dedupeKey: `${lead.id}:review_completed_readiness_check:${data.id}`
-    });
-
-    await enqueueAutomation(supabase, {
-      leadId: lead.id,
-      ruleKey: "readiness_followup_24h",
-      runAfter: addHours(new Date(), 24),
-      priority: 100,
-      payload: { readinessCheckId: data.id },
-      dedupeKey: `${lead.id}:readiness_followup_24h:${data.id}`
     });
 
     return res.status(200).json({
