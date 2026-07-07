@@ -5,10 +5,25 @@ const { getLeadAiContext, generateLeadSummary } = require("./_ai");
 function clean(value) { return typeof value === "string" ? value.trim() : ""; }
 function minutesFromNow(minutes) { const date = new Date(); date.setMinutes(date.getMinutes() + minutes); return date.toISOString(); }
 
+const ACTIVE_STAGE_RULE_RE = /^(lead|engaged|offered)_followup_day_(1|3|5)$/;
+const UNCOMMITTED_RULE_RE = /^(lead|engaged|offered)_mark_uncommitted_day_10$/;
+
 async function getLead(supabase, leadId) {
   const { data, error } = await supabase.from("leads").select("id, athlete_first_name, athlete_last_name, parent_email, readiness_check_url, current_state, funnel_stage, lead_score, first_email_sent, first_email_sent_at, readiness_started_at, readiness_completed_at").eq("id", leadId).single();
   if (error) throw new Error(`Lead lookup failed: ${error.message}`);
   return data;
+}
+
+function parseStageFollowupRule(ruleKey) {
+  const match = clean(ruleKey).match(ACTIVE_STAGE_RULE_RE);
+  if (!match) return null;
+  return { stage: match[1], day: Number(match[2]), sequenceKey: ruleKey };
+}
+
+function parseUncommittedRule(ruleKey) {
+  const match = clean(ruleKey).match(UNCOMMITTED_RULE_RE);
+  if (!match) return null;
+  return { stage: match[1], day: 10 };
 }
 
 async function hasEvent(supabase, leadId, eventTypes) {
@@ -48,10 +63,10 @@ async function sendPreparedEmail({ supabase, lead, email, sequenceKey, req, queu
   return { skipped: false, ...result };
 }
 
-async function sendSequenceEmail({ supabase, lead, sequenceKey, req, queueItem }) {
+async function sendSequenceEmail({ supabase, lead, sequenceKey, req, queueItem, metadata = {} }) {
   const email = buildSequenceEmail({ sequenceKey, lead });
   if (!email) throw new Error(`Unknown email sequence: ${sequenceKey}`);
-  return sendPreparedEmail({ supabase, lead, email, sequenceKey, req, queueItem });
+  return sendPreparedEmail({ supabase, lead, email, sequenceKey, req, queueItem, metadata });
 }
 
 async function sendAiSequenceEmail({ supabase, lead, sequenceKey, req, queueItem }) {
@@ -79,6 +94,47 @@ async function failAutomation(supabase, queueItem, error) {
   const exhausted = attempts >= maxAttempts;
   await supabase.from("automation_queue").update({ status: exhausted ? "failed" : "pending", attempts, run_after: exhausted ? queueItem.run_after : minutesFromNow(Math.min(60, 5 * attempts)), failed_at: exhausted ? new Date().toISOString() : null, error_message: String(error?.message || error || "Unknown automation error").slice(0, 2000), locked_at: null, locked_by: null }).eq("id", queueItem.id);
   await supabase.from("automation_history").insert({ automation_queue_id: queueItem.id, lead_id: queueItem.lead_id, rule_key: queueItem.rule_key, action_type: "rule_failed", status: exhausted ? "failed" : "retrying", payload: queueItem.payload || {}, result: { attempts, maxAttempts }, error_message: String(error?.message || error || "Unknown automation error").slice(0, 2000) });
+}
+
+async function handleStageFollowup({ supabase, queueItem, req }) {
+  const rule = parseStageFollowupRule(queueItem.rule_key);
+  if (!rule) return null;
+
+  const lead = await getLead(supabase, queueItem.lead_id);
+  if (lead.funnel_stage !== rule.stage) {
+    return { skipped: true, reason: "stage_changed", expectedStage: rule.stage, actualStage: lead.funnel_stage, actionType: "no_email_needed" };
+  }
+
+  const result = await sendSequenceEmail({
+    supabase,
+    lead,
+    sequenceKey: rule.sequenceKey,
+    req,
+    queueItem,
+    metadata: { funnelStage: rule.stage, followupDay: rule.day }
+  });
+  return { ...result, actionType: "stage_followup_email", funnelStage: rule.stage, followupDay: rule.day };
+}
+
+async function handleMarkUncommitted({ supabase, queueItem, req }) {
+  const rule = parseUncommittedRule(queueItem.rule_key);
+  if (!rule) return null;
+
+  const lead = await getLead(supabase, queueItem.lead_id);
+  if (lead.funnel_stage !== rule.stage) {
+    return { skipped: true, reason: "stage_changed", expectedStage: rule.stage, actualStage: lead.funnel_stage, actionType: "no_uncommitted_needed" };
+  }
+
+  await recordLeadEvent(supabase, {
+    leadId: lead.id,
+    eventType: "LEAD_UNCOMMITTED",
+    source: "automation",
+    metadata: { automationQueueId: queueItem.id, previousStage: rule.stage, day: rule.day },
+    req,
+    idempotencyKey: `lead-uncommitted:${lead.id}:${rule.stage}`
+  });
+
+  return { skipped: false, actionType: "mark_uncommitted", previousStage: rule.stage };
 }
 
 async function handleFirstEmailUnopened24h({ supabase, queueItem, req }) {
@@ -179,6 +235,18 @@ const RULE_HANDLERS = {
 };
 
 async function runAutomationRule({ supabase, queueItem, req }) {
+  const stageResult = await handleStageFollowup({ supabase, queueItem, req });
+  if (stageResult) {
+    await completeAutomation(supabase, queueItem, stageResult);
+    return stageResult;
+  }
+
+  const uncommittedResult = await handleMarkUncommitted({ supabase, queueItem, req });
+  if (uncommittedResult) {
+    await completeAutomation(supabase, queueItem, uncommittedResult);
+    return uncommittedResult;
+  }
+
   const handler = RULE_HANDLERS[queueItem.rule_key];
   if (!handler) return { skipped: true, reason: "unknown_rule", actionType: "unknown_rule" };
   try {
@@ -191,4 +259,4 @@ async function runAutomationRule({ supabase, queueItem, req }) {
   }
 }
 
-module.exports = { runAutomationRule, RULE_HANDLERS, hasEvent, hasEmailCampaign };
+module.exports = { runAutomationRule, RULE_HANDLERS, hasEvent, hasEmailCampaign, parseStageFollowupRule, parseUncommittedRule };
