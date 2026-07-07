@@ -56,6 +56,23 @@ function hasBiggestQuestion(lead) {
   return Boolean(clean(lead?.biggest_question));
 }
 
+function getQuestionLeadEligibleAtMs(lead) {
+  const queueRunAfterMs = new Date(lead?.first_email_queue_run_after).getTime();
+  if (Number.isFinite(queueRunAfterMs)) {
+    return { eligibleAtMs: queueRunAfterMs, source: "automation_queue.run_after" };
+  }
+
+  const createdAtMs = new Date(lead.created_at).getTime();
+  if (!Number.isFinite(createdAtMs)) {
+    return { eligibleAtMs: null, source: "missing_created_at" };
+  }
+
+  return {
+    eligibleAtMs: createdAtMs + QUESTION_LEAD_SEND_DELAY_MINUTES * 60 * 1000,
+    source: "created_at_fallback"
+  };
+}
+
 function getQuestionLeadEligibility(lead) {
   if (!hasBiggestQuestion(lead)) {
     return { eligible: true, reason: null };
@@ -69,17 +86,16 @@ function getQuestionLeadEligibility(lead) {
     return { eligible: false, reason: "missing_question_context" };
   }
 
-  const createdAtMs = new Date(lead.created_at).getTime();
-  if (!Number.isFinite(createdAtMs)) {
-    return { eligible: false, reason: "missing_created_at" };
+  const { eligibleAtMs, source } = getQuestionLeadEligibleAtMs(lead);
+  if (!Number.isFinite(eligibleAtMs)) {
+    return { eligible: false, reason: "missing_send_window" };
   }
 
-  const eligibleAtMs = createdAtMs + QUESTION_LEAD_SEND_DELAY_MINUTES * 60 * 1000;
   if (Date.now() < eligibleAtMs) {
-    return { eligible: false, reason: "waiting_for_send_window", eligibleAt: new Date(eligibleAtMs).toISOString() };
+    return { eligible: false, reason: "waiting_for_send_window", eligibleAt: new Date(eligibleAtMs).toISOString(), source };
   }
 
-  return { eligible: true, reason: null, eligibleAt: new Date(eligibleAtMs).toISOString() };
+  return { eligible: true, reason: null, eligibleAt: new Date(eligibleAtMs).toISOString(), source };
 }
 
 function buildQuestionContext(lead) {
@@ -178,6 +194,32 @@ function buildFirstEmail(lead) {
   };
 }
 
+async function attachFirstEmailQueueRunAfter(leads) {
+  const leadIds = (leads || []).map((lead) => lead.id).filter(Boolean);
+  if (!leadIds.length) return leads || [];
+
+  const { data, error } = await supabase
+    .from("automation_queue")
+    .select("lead_id, run_after")
+    .in("lead_id", leadIds)
+    .eq("rule_key", "send_first_email")
+    .order("run_after", { ascending: false });
+
+  if (error) throw new Error(`First email queue lookup failed: ${error.message}`);
+
+  const runAfterByLeadId = new Map();
+  for (const row of data || []) {
+    if (!runAfterByLeadId.has(row.lead_id)) {
+      runAfterByLeadId.set(row.lead_id, row.run_after);
+    }
+  }
+
+  return (leads || []).map((lead) => ({
+    ...lead,
+    first_email_queue_run_after: runAfterByLeadId.get(lead.id) || null
+  }));
+}
+
 async function fetchReadyLeads(targetLeadId = "") {
   let query = supabase
     .from("leads")
@@ -191,7 +233,7 @@ async function fetchReadyLeads(targetLeadId = "") {
 
   const { data, error } = await query;
   if (error) throw new Error(`Ready lead query failed: ${error.message}`);
-  return data || [];
+  return attachFirstEmailQueueRunAfter(data || []);
 }
 
 async function claimLead(lead) {
