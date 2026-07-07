@@ -9,7 +9,7 @@
     "test:phase3": "node --test tests/analytics.integration.test.js",
     "test:phase4": "node --test tests/ai.integration.test.js",
     "test:integration": "node --test tests/*.integration.test.js",
-    "test:syntax": "node --check api/_ai.js && node --check api/ai-lead.js && node --check api/_automation-email.js && node --check api/_automation-rules.js"
+    "test:syntax": "node --check api/_ai.js && node --check api/ai-lead.js && node --check api/_automation-email.js && node --check api/_automation-rules.js && node --check api/send-ready-lead-emails.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.48.0",
