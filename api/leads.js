@@ -1,5 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
-const { recordLeadEvent, enqueueAutomation } = require("./_funnel");
+const { recordLeadEvent, enqueueAutomation, scheduleFunnelStageAutomations } = require("./_funnel");
 
 const rawSupabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -144,6 +144,12 @@ module.exports = async function handler(req, res) {
       metadata: { hasBiggestQuestion: Boolean(biggestQuestion), readinessCheckUrl },
       req,
       idempotencyKey: `lead-created:${data.id}`
+    });
+
+    await scheduleFunnelStageAutomations(supabase, {
+      leadId: data.id,
+      stage: "lead",
+      sourceEventType: "LEAD_CREATED"
     });
 
     await seedPhaseOneAutomations({ leadId: data.id, biggestQuestion, readinessCheckUrl });
