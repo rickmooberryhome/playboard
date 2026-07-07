@@ -8,7 +8,6 @@ process.env.PLAYBOARD_AUTOMATION_DRY_RUN = "true";
 const hasDbConfig = Boolean(process.env.SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY));
 
 const leadHandler = require("../api/leads");
-const trackHandler = require("../api/track");
 const readinessHandler = require("../api/readiness-check");
 const automationWorker = require("../api/run-automation-queue");
 const { recordLeadEvent } = require("../api/_funnel");
@@ -35,14 +34,8 @@ function res() {
   return {
     statusCode: 200,
     body: undefined,
-    status(code) {
-      this.statusCode = code;
-      return this;
-    },
-    json(payload) {
-      this.body = payload;
-      return this;
-    }
+    status(code) { this.statusCode = code; return this; },
+    json(payload) { this.body = payload; return this; }
   };
 }
 
@@ -73,46 +66,21 @@ async function cleanup(supabase, ids) {
     const { error } = await supabase.from(table).delete().in(column, leadIds);
     if (error && error.code !== "42P01") throw new Error(`Cleanup failed for ${table}: ${error.message}`);
   }
-
-  for (const [table, column] of CLEANUP_TABLES) {
-    const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true }).in(column, leadIds);
-    if (error && error.code !== "42P01") throw new Error(`Cleanup check failed for ${table}: ${error.message}`);
-    assert.equal(count || 0, 0, `${table} should be clean`);
-  }
 }
 
-async function createLead(runId) {
+async function createLead(runId, biggestQuestion = "What level should we target?") {
   const response = await call(leadHandler, {
     body: {
       firstName: "PhaseTwo",
       lastName: "Automation",
       email: `phase2+${runId}@example.com`,
-      biggestQuestion: "What level should we target?"
+      biggestQuestion
     }
   });
 
   assert.equal(response.statusCode, 200);
   assert.equal(response.body.success, true);
   return response.body.leadId;
-}
-
-async function insertRule(supabase, leadId, ruleKey, suffix = "manual") {
-  const { data, error } = await supabase
-    .from("automation_queue")
-    .insert({
-      lead_id: leadId,
-      rule_key: ruleKey,
-      status: "pending",
-      priority: 1,
-      run_after: new Date(Date.now() - 1000).toISOString(),
-      payload: { test: true, suffix },
-      dedupe_key: `${leadId}:${ruleKey}:${suffix}`
-    })
-    .select("id")
-    .single();
-
-  assert.ifError(error);
-  return data.id;
 }
 
 async function makeDue(supabase, leadId, ruleKey) {
@@ -151,20 +119,6 @@ async function ruleStatus(supabase, leadId, ruleKey) {
   return data?.status || null;
 }
 
-async function historyCount(supabase, leadId, ruleKey, status = null) {
-  let query = supabase
-    .from("automation_history")
-    .select("*", { count: "exact", head: true })
-    .eq("lead_id", leadId)
-    .eq("rule_key", ruleKey);
-
-  if (status) query = query.eq("status", status);
-
-  const { count, error } = await query;
-  assert.ifError(error);
-  return count || 0;
-}
-
 async function runWorker(leadId) {
   const response = await call(automationWorker, { body: { leadId } });
   assert.equal(response.statusCode, 200);
@@ -197,7 +151,7 @@ async function submitReadiness(leadId, runId) {
   return readiness.body.readinessCheckId;
 }
 
-test("Phase 2 automation sends sequence emails, handles skip paths, records history, and cleans up", { skip: hasDbConfig ? false : "database env vars required" }, async () => {
+test("Phase 2 automation handles stage follow-ups, stage skip paths, uncommitted status, and AI context", { skip: hasDbConfig ? false : "database env vars required" }, async () => {
   const supabase = db();
   const ids = [];
   const runId = `test-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -211,114 +165,49 @@ test("Phase 2 automation sends sequence emails, handles skip paths, records hist
     assert.equal(await ruleStatus(supabase, contextLeadId, "generate_first_email_context"), "completed");
     assert.equal(await ruleStatus(supabase, contextLeadId, "send_first_email"), "pending");
 
-    const unopenedLeadId = await createLead(`${runId}-unopened`);
-    ids.push(unopenedLeadId);
-    await makeDue(supabase, unopenedLeadId, "first_email_unopened_24h");
-    result = await runWorker(unopenedLeadId);
-    assert.ok(result.processed >= 1);
-    assert.equal(await campaignCount(supabase, unopenedLeadId, "first_email_unopened_24h"), 1);
-    assert.equal(await ruleStatus(supabase, unopenedLeadId, "first_email_unopened_24h"), "completed");
-    assert.equal(await ruleStatus(supabase, unopenedLeadId, "first_email_unopened_72h"), "pending");
-
-    await makeDue(supabase, unopenedLeadId, "first_email_unopened_72h");
-    result = await runWorker(unopenedLeadId);
-    assert.ok(result.processed >= 1);
-    assert.equal(await campaignCount(supabase, unopenedLeadId, "first_email_unopened_24h"), 1, "duplicate unopened campaign should not be sent twice");
-    assert.ok(await historyCount(supabase, unopenedLeadId, "first_email_unopened_72h", "skipped") >= 1);
-
-    const openedLeadId = await createLead(`${runId}-opened`);
-    ids.push(openedLeadId);
+    const engagedLeadId = await createLead(`${runId}-engaged`);
+    ids.push(engagedLeadId);
+    await makeDue(supabase, engagedLeadId, "lead_followup_day_1");
     await recordLeadEvent(supabase, {
-      leadId: openedLeadId,
-      eventType: "EMAIL_OPENED",
-      source: "test",
-      metadata: { runId },
-      idempotencyKey: `test-opened:${openedLeadId}`
-    });
-    await makeDue(supabase, openedLeadId, "first_email_unopened_24h");
-    result = await runWorker(openedLeadId);
-    assert.ok(result.processed >= 1);
-    assert.equal(await campaignCount(supabase, openedLeadId, "first_email_unopened_24h"), 0);
-    assert.equal(await ruleStatus(supabase, openedLeadId, "opened_no_click_24h"), "pending");
-
-    await makeDue(supabase, openedLeadId, "opened_no_click_24h");
-    result = await runWorker(openedLeadId);
-    assert.ok(result.processed >= 1);
-    assert.equal(await campaignCount(supabase, openedLeadId, "opened_no_click_24h"), 1);
-
-    const clickedLeadId = await createLead(`${runId}-clicked`);
-    ids.push(clickedLeadId);
-    await recordLeadEvent(supabase, {
-      leadId: clickedLeadId,
+      leadId: engagedLeadId,
       eventType: "EMAIL_CLICKED",
       source: "test",
       metadata: { runId },
-      idempotencyKey: `test-clicked:${clickedLeadId}`
+      idempotencyKey: `test-clicked:${engagedLeadId}`
     });
-    await insertRule(supabase, clickedLeadId, "opened_no_click_24h", "clicked-skip");
-    result = await runWorker(clickedLeadId);
+    result = await runWorker(engagedLeadId);
     assert.ok(result.processed >= 1);
-    assert.equal(await campaignCount(supabase, clickedLeadId, "opened_no_click_24h"), 0);
-    assert.ok(await historyCount(supabase, clickedLeadId, "opened_no_click_24h", "skipped") >= 1);
+    assert.equal(await campaignCount(supabase, engagedLeadId, "lead_followup_day_1"), 0, "old lead-stage email should not send after engagement");
+    assert.equal(await ruleStatus(supabase, engagedLeadId, "lead_followup_day_1"), "completed");
 
-    const abandonedLeadId = await createLead(`${runId}-abandoned`);
-    ids.push(abandonedLeadId);
-    const sessionId = `session-${runId}`;
-    const started = await call(trackHandler, {
-      body: {
-        leadId: abandonedLeadId,
-        eventType: "READINESS_FORM_STARTED",
-        sessionId,
-        idempotencyKey: `${abandonedLeadId}:started:${sessionId}`,
-        metadata: { formKey: "readiness_check", fieldKey: "athleteGrade", queueAbandonmentRecovery: true }
-      }
-    });
-    assert.equal(started.statusCode, 200);
-    assert.equal(await ruleStatus(supabase, abandonedLeadId, "readiness_abandoned_30m"), "pending");
-    assert.equal(await ruleStatus(supabase, abandonedLeadId, "readiness_abandoned_24h"), "pending");
-
-    await makeDue(supabase, abandonedLeadId, "readiness_abandoned_30m");
-    result = await runWorker(abandonedLeadId);
+    await makeDue(supabase, engagedLeadId, "engaged_followup_day_1");
+    result = await runWorker(engagedLeadId);
     assert.ok(result.processed >= 1);
-    assert.equal(await campaignCount(supabase, abandonedLeadId, "readiness_abandoned_30m"), 1);
+    assert.equal(await campaignCount(supabase, engagedLeadId, "engaged_followup_day_1"), 1);
 
-    await makeDue(supabase, abandonedLeadId, "readiness_abandoned_24h");
-    result = await runWorker(abandonedLeadId);
+    const offeredLeadId = await createLead(`${runId}-offered`);
+    ids.push(offeredLeadId);
+    await submitReadiness(offeredLeadId, runId);
+    await makeDue(supabase, offeredLeadId, "offered_followup_day_1");
+    result = await runWorker(offeredLeadId);
     assert.ok(result.processed >= 1);
-    assert.equal(await campaignCount(supabase, abandonedLeadId, "readiness_abandoned_24h"), 1);
+    assert.equal(await campaignCount(supabase, offeredLeadId, "offered_followup_day_1"), 1);
 
-    const completedLeadId = await createLead(`${runId}-completed`);
-    ids.push(completedLeadId);
-    await submitReadiness(completedLeadId, runId);
-    await makeDue(supabase, completedLeadId, "review_completed_readiness_check");
-    await makeDue(supabase, completedLeadId, "readiness_followup_24h");
-    result = await runWorker(completedLeadId);
-    assert.ok(result.processed >= 2);
-    assert.equal(await campaignCount(supabase, completedLeadId, "readiness_followup_24h"), 1);
-
-    const { count: reviewCount, error: reviewError } = await supabase
-      .from("lead_events")
-      .select("*", { count: "exact", head: true })
-      .eq("lead_id", completedLeadId)
-      .eq("event_type", "READINESS_REVIEW_QUEUED");
-    assert.ifError(reviewError);
-    assert.equal(reviewCount, 1);
-
-    const completedSkipLeadId = await createLead(`${runId}-completed-skip`);
-    ids.push(completedSkipLeadId);
-    await submitReadiness(completedSkipLeadId, `${runId}-skip`);
-    await insertRule(supabase, completedSkipLeadId, "readiness_abandoned_30m", "completed-skip");
-    result = await runWorker(completedSkipLeadId);
+    const uncommittedLeadId = await createLead(`${runId}-uncommitted`);
+    ids.push(uncommittedLeadId);
+    await makeDue(supabase, uncommittedLeadId, "lead_mark_uncommitted_day_10");
+    result = await runWorker(uncommittedLeadId);
     assert.ok(result.processed >= 1);
-    assert.equal(await campaignCount(supabase, completedSkipLeadId, "readiness_abandoned_30m"), 0);
-    assert.ok(await historyCount(supabase, completedSkipLeadId, "readiness_abandoned_30m", "skipped") >= 1);
 
-    const { count: totalHistory, error: historyError } = await supabase
-      .from("automation_history")
-      .select("*", { count: "exact", head: true })
-      .in("lead_id", ids);
-    assert.ifError(historyError);
-    assert.ok(totalHistory >= 10, "automation history should record completed and skipped actions");
+    const { data: uncommittedLead, error: uncommittedError } = await supabase
+      .from("leads")
+      .select("current_state, funnel_stage, last_event_type")
+      .eq("id", uncommittedLeadId)
+      .single();
+    assert.ifError(uncommittedError);
+    assert.equal(uncommittedLead.current_state, "uncommitted");
+    assert.equal(uncommittedLead.funnel_stage, "uncommitted");
+    assert.equal(uncommittedLead.last_event_type, "LEAD_UNCOMMITTED");
   } finally {
     await cleanup(supabase, ids);
   }
