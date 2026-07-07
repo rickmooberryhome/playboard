@@ -113,7 +113,7 @@ module.exports = async function handler(req, res) {
         parent_email: parentEmail.toLowerCase(),
         biggest_question: biggestQuestion || null,
         source: "landing_page",
-        funnel_stage: "lead",
+        funnel_stage: null,
         current_state: "lead_created",
         lead_score: 0,
         user_agent: req.headers["user-agent"] || null,
