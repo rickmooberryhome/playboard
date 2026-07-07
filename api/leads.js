@@ -1,5 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
-const { recordLeadEvent, enqueueAutomation } = require("./_funnel");
+const { recordLeadEvent, enqueueAutomation, scheduleFunnelStageAutomations } = require("./_funnel");
 
 const rawSupabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -83,12 +83,12 @@ module.exports = async function handler(req, res) {
 
   if (!rawSupabaseUrl || !supabaseSecretKey) {
     console.error("Missing Supabase environment variables.");
-    return res.status(500).json({ success: false, code: "SUPABASE_CONFIG_MISSING", message: "The lead system is not configured yet. Check SUPABASE_URL and SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in Vercel." });
+    return res.status(500).json({ success: false, code: "SUPABASE_CONFIG_MISSING", message: "The lead system is not configured yet." });
   }
 
   if (!supabaseUrl || !supabase) {
     console.error("Invalid Supabase URL.");
-    return res.status(500).json({ success: false, code: "SUPABASE_URL_INVALID", message: "The Supabase project URL is invalid. Use the project URL format: https://YOUR-PROJECT-REF.supabase.co" });
+    return res.status(500).json({ success: false, code: "SUPABASE_URL_INVALID", message: "The Supabase project URL is invalid." });
   }
 
   try {
@@ -113,7 +113,7 @@ module.exports = async function handler(req, res) {
         parent_email: parentEmail.toLowerCase(),
         biggest_question: biggestQuestion || null,
         source: "landing_page",
-        funnel_stage: null,
+        funnel_stage: "lead",
         current_state: "lead_created",
         lead_score: 0,
         user_agent: req.headers["user-agent"] || null,
@@ -124,14 +124,7 @@ module.exports = async function handler(req, res) {
 
     if (error) {
       console.error("Supabase insert error:", error);
-      return res.status(500).json({
-        success: false,
-        code: "SUPABASE_INSERT_FAILED",
-        supabaseCode: error.code || null,
-        message: error.code === "PGRST125"
-          ? "The Supabase URL appears to include an invalid path. In Vercel, SUPABASE_URL should be the project URL only: https://YOUR-PROJECT-REF.supabase.co"
-          : "Something went wrong saving your request. Please check the Supabase leads table columns."
-      });
+      return res.status(500).json({ success: false, code: "SUPABASE_INSERT_FAILED", supabaseCode: error.code || null, message: "Something went wrong saving your request. Please check the Supabase leads table columns." });
     }
 
     const readinessCheckUrl = buildReadinessCheckUrl(req, data.id);
@@ -153,14 +146,15 @@ module.exports = async function handler(req, res) {
       idempotencyKey: `lead-created:${data.id}`
     });
 
+    await scheduleFunnelStageAutomations(supabase, {
+      leadId: data.id,
+      stage: "lead",
+      sourceEventType: "LEAD_CREATED"
+    });
+
     await seedPhaseOneAutomations({ leadId: data.id, biggestQuestion, readinessCheckUrl });
 
-    return res.status(200).json({
-      success: true,
-      leadId: data.id,
-      emailStatus: emailQueueFields.first_email_status,
-      message: "Got it. We have your information. We will email the next step shortly."
-    });
+    return res.status(200).json({ success: true, leadId: data.id, emailStatus: emailQueueFields.first_email_status, message: "Got it. We have your information. We will email the next step shortly." });
   } catch (error) {
     console.error("Lead API error:", error);
     return res.status(500).json({ success: false, code: "LEAD_API_ERROR", message: "Something went wrong. Please try again." });
