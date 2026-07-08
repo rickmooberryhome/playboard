@@ -18,8 +18,11 @@ function ensureSiteLink(container, href, label, beforeSelector = "") {
 const navToggle = document.querySelector("[data-nav-toggle]");
 const nav = document.querySelector("[data-nav]");
 const footerNav = document.querySelector(".site-footer nav");
+const faqHref = "/faq/";
 const aboutHref = "/about/";
 
+ensureSiteLink(nav, faqHref, "FAQ", 'a[href="/about/"], a[href="#why-us"], a[href="./index.html#intake"]');
+ensureSiteLink(footerNav, faqHref, "FAQ", 'a[href="/about/"], a[href="#intake"], a[href="./index.html#intake"]');
 ensureSiteLink(nav, aboutHref, "About", 'a[href="#why-us"], a[href="./index.html#intake"]');
 ensureSiteLink(footerNav, aboutHref, "About", 'a[href="#intake"], a[href="./index.html#intake"]');
 
