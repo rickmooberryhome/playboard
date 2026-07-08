@@ -7,6 +7,29 @@
   <meta name="description" content="Learn why PlayBoard was built to help high school football athletes and families stop guessing and start recruiting with a plan." />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/image-styles.css" />
+  <style>
+    .about-focus-overlay .panel-row {
+      grid-template-columns: 5.25rem minmax(0, 1fr);
+      gap: 1rem;
+      align-items: start;
+      padding: 0.22rem 0;
+    }
+
+    .about-focus-overlay .panel-row strong {
+      white-space: nowrap;
+    }
+
+    .about-focus-overlay .panel-row span {
+      min-width: 0;
+    }
+
+    @media (max-width: 460px) {
+      .about-focus-overlay .panel-row {
+        grid-template-columns: 1fr;
+        gap: 0.12rem;
+      }
+    }
+  </style>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -93,7 +116,7 @@
       </div>
 
       <div class="image-panel img-campus-visit-walkway">
-        <div class="coded-overlay">
+        <div class="coded-overlay about-focus-overlay">
           <span class="panel-label">PlayBoard focus</span>
           <div class="panel-row"><strong>Fit</strong><span>Build a realistic school-target board.</span></div>
           <div class="panel-row"><strong>Message</strong><span>Help athletes contact coaches with a clear reason.</span></div>
