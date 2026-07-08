@@ -18,8 +18,7 @@ function ensureSiteLink(container, href, label, beforeSelector = "") {
 const navToggle = document.querySelector("[data-nav-toggle]");
 const nav = document.querySelector("[data-nav]");
 const footerNav = document.querySelector(".site-footer nav");
-const isHomePage = window.location.pathname.endsWith("/") || window.location.pathname.endsWith("/index.html");
-const aboutHref = isHomePage ? "./about.html" : "./about.html";
+const aboutHref = "./about.html";
 
 ensureSiteLink(nav, aboutHref, "About", 'a[href="#why-us"], a[href="./index.html#intake"]');
 ensureSiteLink(footerNav, aboutHref, "About", 'a[href="#intake"], a[href="./index.html#intake"]');
