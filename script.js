@@ -1,5 +1,27 @@
+function ensureSiteLink(container, href, label, beforeSelector = "") {
+  if (!container || container.querySelector(`a[href="${href}"]`)) {
+    return;
+  }
+
+  const link = document.createElement("a");
+  link.href = href;
+  link.textContent = label;
+
+  const beforeElement = beforeSelector ? container.querySelector(beforeSelector) : null;
+  if (beforeElement) {
+    container.insertBefore(link, beforeElement);
+  } else {
+    container.appendChild(link);
+  }
+}
+
 const navToggle = document.querySelector("[data-nav-toggle]");
 const nav = document.querySelector("[data-nav]");
+const footerNav = document.querySelector(".site-footer nav");
+const aboutHref = "./about.html";
+
+ensureSiteLink(nav, aboutHref, "About", 'a[href="#why-us"], a[href="./index.html#intake"]');
+ensureSiteLink(footerNav, aboutHref, "About", 'a[href="#intake"], a[href="./index.html#intake"]');
 
 if (navToggle && nav) {
   navToggle.addEventListener("click", () => {
