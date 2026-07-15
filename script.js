@@ -21,12 +21,14 @@ const footerNav = document.querySelector(".site-footer nav");
 const faqHref = "/faq/";
 const aboutHref = "/about/";
 const privacyHref = "/privacy/";
+const termsHref = "/terms/";
 
 ensureSiteLink(nav, faqHref, "FAQ", 'a[href="/about/"], a[href="#why-us"], a[href="./index.html#intake"]');
-ensureSiteLink(footerNav, faqHref, "FAQ", 'a[href="/about/"], a[href="#intake"], a[href="./index.html#intake"]');
+ensureSiteLink(footerNav, faqHref, "FAQ", 'a[href="/about/"], a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
 ensureSiteLink(nav, aboutHref, "About", 'a[href="#why-us"], a[href="./index.html#intake"]');
-ensureSiteLink(footerNav, aboutHref, "About", 'a[href="#intake"], a[href="./index.html#intake"]');
-ensureSiteLink(footerNav, privacyHref, "Privacy", 'a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
+ensureSiteLink(footerNav, aboutHref, "About", 'a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
+ensureSiteLink(footerNav, privacyHref, "Privacy", 'a[href="/terms/"], a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
+ensureSiteLink(footerNav, termsHref, "Terms", 'a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
 
 if (navToggle && nav) {
   navToggle.addEventListener("click", () => {
