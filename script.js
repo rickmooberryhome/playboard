@@ -1,18 +1,44 @@
-function ensureSiteLink(container, href, label, beforeSelector = "") {
-  if (!container || container.querySelector(`a[href="${href}"]`)) {
+function isHomePage() {
+  return window.location.pathname.replace(/\/+$/, "") === "";
+}
+
+function buildLinks(links) {
+  return links.map(([href, label]) => {
+    const link = document.createElement("a");
+    link.href = href;
+    link.textContent = label;
+    return link;
+  });
+}
+
+function setHeaderLinks(container, toggle) {
+  if (!container) {
     return;
   }
 
-  const link = document.createElement("a");
-  link.href = href;
-  link.textContent = label;
-
-  const beforeElement = beforeSelector ? container.querySelector(beforeSelector) : null;
-  if (beforeElement) {
-    container.insertBefore(link, beforeElement);
-  } else {
-    container.appendChild(link);
+  if (!isHomePage()) {
+    container.replaceChildren();
+    container.hidden = true;
+    if (toggle) {
+      toggle.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+    }
+    return;
   }
+
+  const links = [
+    ["#problem", "Problem"],
+    ["#solution", "Solution"],
+    ["#how", "How it works"],
+    ["#guarantee", "Guarantee"],
+    ["#why-us", "Why us"]
+  ];
+
+  container.hidden = false;
+  if (toggle) {
+    toggle.hidden = false;
+  }
+  container.replaceChildren(...buildLinks(links));
 }
 
 function setFooterLinks(container) {
@@ -21,38 +47,25 @@ function setFooterLinks(container) {
   }
 
   const links = [
-    ["/#problem", "Problem"],
-    ["/#solution", "Solution"],
-    ["/#why-us", "Why us"],
-    ["/faq/", "FAQ"],
+    ["/", "Home"],
     ["/about/", "About"],
+    ["/faq/", "FAQ"],
     ["/contact/", "Contact"],
     ["/privacy/", "Privacy"],
-    ["/terms/", "Terms"],
-    ["/#intake", "Get info"]
+    ["/terms/", "Terms"]
   ];
 
-  container.replaceChildren(
-    ...links.map(([href, label]) => {
-      const link = document.createElement("a");
-      link.href = href;
-      link.textContent = label;
-      return link;
-    })
-  );
+  container.replaceChildren(...buildLinks(links));
 }
 
 const navToggle = document.querySelector("[data-nav-toggle]");
 const nav = document.querySelector("[data-nav]");
 const footerNav = document.querySelector(".site-footer nav");
-const faqHref = "/faq/";
-const aboutHref = "/about/";
 
-ensureSiteLink(nav, faqHref, "FAQ", 'a[href="/about/"], a[href="#why-us"], a[href="./index.html#intake"]');
-ensureSiteLink(nav, aboutHref, "About", 'a[href="#why-us"], a[href="./index.html#intake"]');
+setHeaderLinks(nav, navToggle);
 setFooterLinks(footerNav);
 
-if (navToggle && nav) {
+if (navToggle && nav && !nav.hidden) {
   navToggle.addEventListener("click", () => {
     const isOpen = nav.classList.toggle("is-open");
     navToggle.setAttribute("aria-expanded", String(isOpen));
