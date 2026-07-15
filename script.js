@@ -15,22 +15,42 @@ function ensureSiteLink(container, href, label, beforeSelector = "") {
   }
 }
 
+function setFooterLinks(container) {
+  if (!container) {
+    return;
+  }
+
+  const links = [
+    ["/#problem", "Problem"],
+    ["/#solution", "Solution"],
+    ["/#why-us", "Why us"],
+    ["/faq/", "FAQ"],
+    ["/about/", "About"],
+    ["/contact/", "Contact"],
+    ["/privacy/", "Privacy"],
+    ["/terms/", "Terms"],
+    ["/#intake", "Get info"]
+  ];
+
+  container.replaceChildren(
+    ...links.map(([href, label]) => {
+      const link = document.createElement("a");
+      link.href = href;
+      link.textContent = label;
+      return link;
+    })
+  );
+}
+
 const navToggle = document.querySelector("[data-nav-toggle]");
 const nav = document.querySelector("[data-nav]");
 const footerNav = document.querySelector(".site-footer nav");
 const faqHref = "/faq/";
 const aboutHref = "/about/";
-const contactHref = "/contact/";
-const privacyHref = "/privacy/";
-const termsHref = "/terms/";
 
 ensureSiteLink(nav, faqHref, "FAQ", 'a[href="/about/"], a[href="#why-us"], a[href="./index.html#intake"]');
-ensureSiteLink(footerNav, faqHref, "FAQ", 'a[href="/about/"], a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
 ensureSiteLink(nav, aboutHref, "About", 'a[href="#why-us"], a[href="./index.html#intake"]');
-ensureSiteLink(footerNav, aboutHref, "About", 'a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
-ensureSiteLink(footerNav, contactHref, "Contact", 'a[href="/privacy/"], a[href="/terms/"], a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
-ensureSiteLink(footerNav, privacyHref, "Privacy", 'a[href="/terms/"], a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
-ensureSiteLink(footerNav, termsHref, "Terms", 'a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
+setFooterLinks(footerNav);
 
 if (navToggle && nav) {
   navToggle.addEventListener("click", () => {
