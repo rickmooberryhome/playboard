@@ -20,11 +20,13 @@ const nav = document.querySelector("[data-nav]");
 const footerNav = document.querySelector(".site-footer nav");
 const faqHref = "/faq/";
 const aboutHref = "/about/";
+const privacyHref = "/privacy/";
 
 ensureSiteLink(nav, faqHref, "FAQ", 'a[href="/about/"], a[href="#why-us"], a[href="./index.html#intake"]');
 ensureSiteLink(footerNav, faqHref, "FAQ", 'a[href="/about/"], a[href="#intake"], a[href="./index.html#intake"]');
 ensureSiteLink(nav, aboutHref, "About", 'a[href="#why-us"], a[href="./index.html#intake"]');
 ensureSiteLink(footerNav, aboutHref, "About", 'a[href="#intake"], a[href="./index.html#intake"]');
+ensureSiteLink(footerNav, privacyHref, "Privacy", 'a[href="#intake"], a[href="/#intake"], a[href="./index.html#intake"]');
 
 if (navToggle && nav) {
   navToggle.addEventListener("click", () => {
